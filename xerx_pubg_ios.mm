@@ -191,14 +191,35 @@ static void xerx_rebind(struct XerxRebindEntry *entries, size_t count) {
 static volatile BOOL g_toggle_got_hooks = NO;
 static volatile BOOL g_toggle_ptrace_block = NO;
 
-// V.1.7 EXPERT ANCHORS & SIGNATURES
-#define ANOGS_RET_ANCHOR 0x41E4
-#define ACE_SAFE_SIGNATURE 0x30B1BCBA
-#define TDM_REPORT_ENABLE_OFF 0x2A5711
+// --- V.1.7.1 SURGICAL DATA KILL SWITCHES (anogs __DATA) ---
+#XERX_DATA_ACE_MONITOR 0x283B58
+#XERX_DATA_TP2_SCAN 0x283B5C
+#XERX_DATA_INTEGRITY_CHECK 0x283B60
+#XERX_DATA_TIMING_CHECK 0x283B64
+#XERX_DATA_NETFLOW_MONITOR 0x283B68
+#XERX_DATA_REPORT_ACTIVE 0x283BA0
+#XERX_DATA_SCAN_INTERVAL 0x283BB0
+#XERX_DATA_ABORT_TIMER 0x2837D8
 
-// AnoSDK Proxy Targets
-#define ANOGS_IOCTL_OFF 0x2A572B
-#define ANOGS_REPORT_DATA_OFF 0x2A56BA
+static void AntiBanEnforcer() {
+  uintptr_t anBase = 0;
+  while (true) {
+    if (!anBase)
+      anBase = XerxFindImageBase("anogs");
+    if (anBase) {
+      // Continuously reset kill switches (Writable __DATA only)
+      *(uint32_t *)(anBase + 0x283B58) = 0;          // ACE Monitor -> OFF
+      *(uint32_t *)(anBase + 0x283B5C) = 0;          // TP2 Scan -> OFF
+      *(uint32_t *)(anBase + 0x283B60) = 0;          // Integrity -> OFF
+      *(uint32_t *)(anBase + 0x283B64) = 0;          // Timing -> OFF
+      *(uint32_t *)(anBase + 0x283B68) = 0;          // Netflow -> OFF
+      *(uint32_t *)(anBase + 0x283BA0) = 0;          // Reporting -> OFF
+      *(uint32_t *)(anBase + 0x283BB0) = 0x7FFFFFFF; // Interval -> MAX
+      *(uint32_t *)(anBase + 0x2837D8) = 0;          // Abort Timer -> OFF
+    }
+    [NSThread sleepForTimeInterval:1.0];
+  }
+}
 
 // SVC 0x80 Direct Patches REMOVED for Stability
 
@@ -585,11 +606,17 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
     [NSThread sleepForTimeInterval:0.4];
     dispatch_async(dispatch_get_main_queue(), ^{
       [self setProgress:0.6];
-      [self logMonitor:@"[SEQ] EXPERT PROXY (P3)..."];
+      [self logMonitor:@"[SEQ] SURGICAL DATA OVERDRIVE..."];
     });
     if (anBase) {
-      [self logMonitor:@"[P3] AnoSDK Proxies Armed"];
-      // Logic handled by GOT Hooks
+      [self logMonitor:@"[GHOST] Enforcing Data Kill Switches..."];
+      // Start the background enforcer thread
+      static dispatch_once_t onceToken;
+      dispatch_once(&onceToken, ^{
+        [NSThread detachNewThreadSelector:@selector(startEnforcer)
+                                 toTarget:self
+                               withObject:nil];
+      });
     }
 
     [NSThread sleepForTimeInterval:0.4];
@@ -632,6 +659,10 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
     if ([[NSFileManager defaultManager] fileExistsAtPath:p])
       [[NSFileManager defaultManager] removeItemAtPath:p error:nil];
   exit(0);
+}
+
+- (void)startEnforcer {
+  AntiBanEnforcer();
 }
 @end
 
