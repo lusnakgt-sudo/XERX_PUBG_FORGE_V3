@@ -192,14 +192,9 @@ static volatile BOOL g_toggle_got_hooks = NO;
 static volatile BOOL g_toggle_ptrace_block = NO;
 
 // --- V.1.7.1 SURGICAL DATA KILL SWITCHES (anogs __DATA) ---
-#XERX_DATA_ACE_MONITOR 0x283B58
-#XERX_DATA_TP2_SCAN 0x283B5C
-#XERX_DATA_INTEGRITY_CHECK 0x283B60
-#XERX_DATA_TIMING_CHECK 0x283B64
-#XERX_DATA_NETFLOW_MONITOR 0x283B68
-#XERX_DATA_REPORT_ACTIVE 0x283BA0
-#XERX_DATA_SCAN_INTERVAL 0x283BB0
-#XERX_DATA_ABORT_TIMER 0x2837D8
+// ACE Monitor: 0x283B58 | TP2 Scan: 0x283B5C | Integrity: 0x283B60
+// Timing: 0x283B64 | Netflow: 0x283B68 | Reporting: 0x283BA0
+// Scan Interval: 0x283BB0 | Abort Timer: 0x2837D8
 
 static void AntiBanEnforcer() {
   uintptr_t anBase = 0;
