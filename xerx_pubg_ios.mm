@@ -248,6 +248,24 @@ static int stub_AnoSDKIoctl(int code, void *arg1, int arg2, void *arg3,
 
 // PROXY: AnoSDKGetReportData REMOVED for Stability
 
+// PROXY: tdm_report
+static int (*orig_tdm_report)(void) = NULL;
+static int stub_tdm_report(void) {
+  return 0; // Absolute Silence
+}
+
+// PROXY: ReportCharacterStateData
+static int (*orig_ReportCharacterStateData)(void *, void *, void *) = NULL;
+static int stub_ReportCharacterStateData(void *a, void *b, void *c) {
+  return 0; // Silence Physical Anomalies
+}
+
+// PROXY: ReportEventWithParam
+static int (*orig_ReportEventWithParam)(void *, void *, void *) = NULL;
+static int stub_ReportEventWithParam(void *a, void *b, void *c) {
+  return 0; // Silence Generic Anomaly Reports
+}
+
 static BOOL g_got_hooks_active = NO;
 void ApplyGOTHooks(void) {
   if (g_got_hooks_active)
@@ -656,8 +674,12 @@ __attribute__((constructor)) static void initialize() {
                 break;
               }
           }
-          if (!window)
+          if (!window) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             window = [UIApplication sharedApplication].keyWindow;
+#pragma clang diagnostic pop
+          }
           if (window) {
             g_dashboard = [[XerxDashboard alloc]
                 initWithFrame:CGRectMake(window.frame.size.width - 260, 60, 240,
