@@ -57,6 +57,9 @@ struct XerxRebindEntry {
 // --- GHOST DEFINITIONS & UTILS ---
 #define TDM_REPORT_ENABLE_OFF 0x283BA0
 
+// --- GHOST DEFINITIONS & UTILS ---
+#define TDM_REPORT_ENABLE_OFF 0x283BA0
+
 static uintptr_t XerxFindImageBase(const char *image_name);
 static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
                                 uint32_t value);
