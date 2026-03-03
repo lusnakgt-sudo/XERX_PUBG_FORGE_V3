@@ -54,7 +54,28 @@ struct XerxRebindEntry {
   void **original;
 };
 
-// --- GHOST MASKING GLOBALS ---
+// --- GHOST DEFINITIONS & UTILS ---
+#define TDM_REPORT_ENABLE_OFF 0x283BA0
+
+static uintptr_t XerxFindImageBase(const char *image_name) {
+  uint32_t count = _dyld_image_count();
+  for (uint32_t i = 0; i < count; i++) {
+    const char *name = _dyld_get_image_name(i);
+    if (name && strstr(name, image_name)) {
+      return _dyld_get_image_vmaddr_slide(i) +
+             (uintptr_t)_dyld_get_image_header(i);
+    }
+  }
+  return 0;
+}
+
+static void XerxPatchDataOffset(uintptr_t base, uint32_t offset, uint32_t val) {
+  if (base) {
+    uint32_t *target = (uint32_t *)(base + offset);
+    *target = val;
+  }
+}
+
 static uint32_t g_my_index = 0xFFFFFFFF;
 static uint32_t (*orig_dyld_get_image_count)(void) = NULL;
 static const char *(*orig_dyld_get_image_name)(uint32_t index) = NULL;
@@ -677,8 +698,8 @@ __attribute__((constructor)) static void initialize() {
                 break;
               }
           }
-          if (!window)
-            window = [UIApplication sharedApplication].keyWindow;
+          if (!window && [UIApplication sharedApplication].windows.count > 0)
+            window = [UIApplication sharedApplication].windows.firstObject;
           if (window) {
             g_dashboard = [[XerxDashboard alloc]
                 initWithFrame:CGRectMake(window.frame.size.width - 260, 60, 240,
