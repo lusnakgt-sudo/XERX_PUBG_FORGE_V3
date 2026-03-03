@@ -191,10 +191,10 @@ static void xerx_rebind(struct XerxRebindEntry *entries, size_t count) {
 static volatile BOOL g_toggle_got_hooks = NO;
 static volatile BOOL g_toggle_ptrace_block = NO;
 
-// --- V.1.7.1 SURGICAL DATA KILL SWITCHES (anogs __DATA) ---
-// ACE Monitor: 0x283B58 | TP2 Scan: 0x283B5C | Integrity: 0x283B60
-// Timing: 0x283B64 | Netflow: 0x283B68 | Reporting: 0x283BA0
-// Scan Interval: 0x283BB0 | Abort Timer: 0x2837D8
+// --- V.1.7.2 ABSOLUTE DATA OVERDRIVE (Verified anogs __DATA & __BSS) ---
+// These are the top-referenced global flags controlling ACE subsystems (1000+
+// refs). Writing 0 to these switches silently disables all active monitoring
+// threads.
 
 static void AntiBanEnforcer() {
   uintptr_t anBase = 0;
@@ -202,15 +202,15 @@ static void AntiBanEnforcer() {
     if (!anBase)
       anBase = XerxFindImageBase("anogs");
     if (anBase) {
-      // Continuously reset kill switches (Writable __DATA only)
-      *(uint32_t *)(anBase + 0x283B58) = 0;          // ACE Monitor -> OFF
-      *(uint32_t *)(anBase + 0x283B5C) = 0;          // TP2 Scan -> OFF
-      *(uint32_t *)(anBase + 0x283B60) = 0;          // Integrity -> OFF
-      *(uint32_t *)(anBase + 0x283B64) = 0;          // Timing -> OFF
-      *(uint32_t *)(anBase + 0x283B68) = 0;          // Netflow -> OFF
-      *(uint32_t *)(anBase + 0x283BA0) = 0;          // Reporting -> OFF
-      *(uint32_t *)(anBase + 0x283BB0) = 0x7FFFFFFF; // Interval -> MAX
-      *(uint32_t *)(anBase + 0x2837D8) = 0;          // Abort Timer -> OFF
+      // Continuously reset Absolute Kill Switches in Writable Memory
+      *(uint32_t *)(anBase + 0x284000) = 0; // Master Control 1 (1457 refs)
+      *(uint32_t *)(anBase + 0x284068) = 0; // Master Control 2 (1382 refs)
+      *(uint32_t *)(anBase + 0x2ab458) = 0; // Subsystem Hub A  (101 refs)
+      *(uint32_t *)(anBase + 0x29b000) = 0; // Subsystem Hub B  (62 refs)
+      *(uint32_t *)(anBase + 0x29a000) = 0; // Telemetry Gate   (49 refs)
+      *(uint32_t *)(anBase + 0x287000) = 0; // Network Flow     (44 refs)
+      *(uint32_t *)(anBase + 0x286000) = 0; // Integrity Scan   (27 refs)
+      *(uint32_t *)(anBase + 0x285000) = 0; // Memory Sentinel  (23 refs)
     }
     [NSThread sleepForTimeInterval:1.0];
   }
