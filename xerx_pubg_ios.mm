@@ -54,16 +54,7 @@ struct XerxRebindEntry {
   void **original;
 };
 
-// --- GHOST DEFINITIONS & UTILS ---
-#define TDM_REPORT_ENABLE_OFF 0x283BA0
-
-// --- GHOST DEFINITIONS & UTILS ---
-#define TDM_REPORT_ENABLE_OFF 0x283BA0
-
-static uintptr_t XerxFindImageBase(const char *image_name);
-static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
-                                uint32_t value);
-
+// --- GHOST MASKING GLOBALS ---
 static uint32_t g_my_index = 0xFFFFFFFF;
 static uint32_t (*orig_dyld_get_image_count)(void) = NULL;
 static const char *(*orig_dyld_get_image_name)(uint32_t index) = NULL;
@@ -200,30 +191,14 @@ static void xerx_rebind(struct XerxRebindEntry *entries, size_t count) {
 static volatile BOOL g_toggle_got_hooks = NO;
 static volatile BOOL g_toggle_ptrace_block = NO;
 
-// --- V.1.7.2 ABSOLUTE DATA OVERDRIVE (Verified anogs __DATA & __BSS) ---
-// These are the top-referenced global flags controlling ACE subsystems (1000+
-// refs). Writing 0 to these switches silently disables all active monitoring
-// threads.
+// V.1.7 EXPERT ANCHORS & SIGNATURES
+#define ANOGS_RET_ANCHOR 0x41E4
+#define ACE_SAFE_SIGNATURE 0x30B1BCBA
+#define TDM_REPORT_ENABLE_OFF 0x2A5711
 
-static void AntiBanEnforcer() {
-  uintptr_t anBase = 0;
-  while (true) {
-    if (!anBase)
-      anBase = XerxFindImageBase("anogs");
-    if (anBase) {
-      // Continuously reset Absolute Kill Switches in Writable Memory
-      *(uint32_t *)(anBase + 0x284000) = 0; // Master Control 1 (1457 refs)
-      *(uint32_t *)(anBase + 0x284068) = 0; // Master Control 2 (1382 refs)
-      *(uint32_t *)(anBase + 0x2ab458) = 0; // Subsystem Hub A  (101 refs)
-      *(uint32_t *)(anBase + 0x29b000) = 0; // Subsystem Hub B  (62 refs)
-      *(uint32_t *)(anBase + 0x29a000) = 0; // Telemetry Gate   (49 refs)
-      *(uint32_t *)(anBase + 0x287000) = 0; // Network Flow     (44 refs)
-      *(uint32_t *)(anBase + 0x286000) = 0; // Integrity Scan   (27 refs)
-      *(uint32_t *)(anBase + 0x285000) = 0; // Memory Sentinel  (23 refs)
-    }
-    [NSThread sleepForTimeInterval:1.0];
-  }
-}
+// AnoSDK Proxy Targets
+#define ANOGS_IOCTL_OFF 0x2A572B
+#define ANOGS_REPORT_DATA_OFF 0x2A56BA
 
 // SVC 0x80 Direct Patches REMOVED for Stability
 
@@ -278,11 +253,16 @@ void ApplyGOTHooks(void) {
   if (g_got_hooks_active)
     return;
   FindMyIndex();
-  struct XerxRebindEntry entries[7] = {
+  struct XerxRebindEntry entries[10] = {
       {"sysctl", (void *)stub_sysctl, (void **)&orig_sysctl},
       {"sysctlbyname", (void *)stub_sysctlbyname, (void **)&orig_sysctlbyname},
       {"ptrace", (void *)stub_ptrace, (void **)&orig_ptrace},
       {"AnoSDKIoctl", (void *)stub_AnoSDKIoctl, (void **)&orig_AnoSDKIoctl},
+      {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
+      {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
+       (void **)&orig_ReportCharacterStateData},
+      {"ReportEventWithParam", (void *)stub_ReportEventWithParam,
+       (void **)&orig_ReportEventWithParam},
       {"_dyld_get_image_count", (void *)stub_dyld_get_image_count,
        (void **)&orig_dyld_get_image_count},
       {"_dyld_get_image_name", (void *)stub_dyld_get_image_name,
@@ -290,7 +270,7 @@ void ApplyGOTHooks(void) {
       {"_dyld_get_image_header", (void *)stub_dyld_get_image_header,
        (void **)&orig_dyld_get_image_header},
   };
-  xerx_rebind(entries, 7);
+  xerx_rebind(entries, 10);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -610,17 +590,11 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
     [NSThread sleepForTimeInterval:0.4];
     dispatch_async(dispatch_get_main_queue(), ^{
       [self setProgress:0.6];
-      [self logMonitor:@"[SEQ] SURGICAL DATA OVERDRIVE..."];
+      [self logMonitor:@"[SEQ] EXPERT PROXY (P3)..."];
     });
     if (anBase) {
-      [self logMonitor:@"[GHOST] Enforcing Data Kill Switches..."];
-      // Start the background enforcer thread
-      static dispatch_once_t onceToken;
-      dispatch_once(&onceToken, ^{
-        [NSThread detachNewThreadSelector:@selector(startEnforcer)
-                                 toTarget:self
-                               withObject:nil];
-      });
+      [self logMonitor:@"[P3] AnoSDK Proxies Armed"];
+      // Logic handled by GOT Hooks
     }
 
     [NSThread sleepForTimeInterval:0.4];
@@ -664,10 +638,6 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
       [[NSFileManager defaultManager] removeItemAtPath:p error:nil];
   exit(0);
 }
-
-- (void)startEnforcer {
-  AntiBanEnforcer();
-}
 @end
 
 __attribute__((constructor)) static void initialize() {
@@ -686,11 +656,8 @@ __attribute__((constructor)) static void initialize() {
                 break;
               }
           }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-          if (!window && [UIApplication sharedApplication].windows.count > 0)
-            window = [UIApplication sharedApplication].windows.firstObject;
-#pragma clang diagnostic pop
+          if (!window)
+            window = [UIApplication sharedApplication].keyWindow;
           if (window) {
             g_dashboard = [[XerxDashboard alloc]
                 initWithFrame:CGRectMake(window.frame.size.width - 260, 60, 240,
