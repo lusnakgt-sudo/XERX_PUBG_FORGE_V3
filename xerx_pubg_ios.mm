@@ -31,9 +31,20 @@
 #import <mach-o/loader.h>
 #import <mach-o/nlist.h>
 
-@class XerxDashboard;
+@class XerxOrb;
 @interface XerxDashboard : UIView
+@property(nonatomic, strong) UILabel *clockLabel;
+@property(nonatomic, strong) UITextView *monitorView;
+@property(nonatomic, strong) UIView *hookDot;
+@property(nonatomic, strong) UIView *bypassDot;
+@property(nonatomic, strong) UIView *progressFill;
+@property(nonatomic, strong) UIButton *injectBtn;
+@property(nonatomic, strong) XerxOrb *orb;
+@property(nonatomic, assign) BOOL isArmed;
 - (void)logMonitor:(NSString *)line;
+- (void)setProgress:(float)p;
+- (void)animateDot:(UIView *)dot success:(BOOL)success;
+- (void)minimize;
 @end
 static XerxDashboard *g_dashboard = nil;
 
@@ -357,17 +368,6 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
   self.center = CGPointMake(self.center.x + t.x, self.center.y + t.y);
   [p setTranslation:CGPointZero inView:self.superview];
 }
-@end
-
-@interface XerxDashboard : UIView
-@property(nonatomic, strong) UILabel *clockLabel;
-@property(nonatomic, strong) UITextView *monitorView;
-@property(nonatomic, strong) UIView *hookDot;
-@property(nonatomic, strong) UIView *bypassDot;
-@property(nonatomic, strong) UIView *progressFill;
-@property(nonatomic, strong) UIButton *injectBtn;
-@property(nonatomic, strong) XerxOrb *orb;
-@property(nonatomic, assign) BOOL isArmed;
 @end
 
 @implementation XerxDashboard
