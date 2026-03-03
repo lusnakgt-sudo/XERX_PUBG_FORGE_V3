@@ -196,55 +196,8 @@ static volatile BOOL g_toggle_ptrace_block = NO;
 #define ACE_SAFE_SIGNATURE 0x30B1BCBA
 #define TDM_REPORT_ENABLE_OFF 0x2A5711
 
-// AnoSDK Proxy Targets
-#define ANOGS_IOCTL_OFF 0x2A572B
-#define ANOGS_REPORT_DATA_OFF 0x2A56BA
-
-// SVC 0x80 Direct Patches REMOVED for Stability
-
-static int (*orig_sysctl)(int *, u_int, void *, size_t *, void *,
-                          size_t) = NULL;
-static int (*orig_sysctlbyname)(const char *, void *, size_t *, void *,
-                                size_t) = NULL;
-static int (*orig_ptrace)(int, pid_t, void *, int) = NULL;
-
-static int stub_sysctl(int *name, u_int namelen, void *info, size_t *infosize,
-                       void *newp, size_t newlen) {
-  if (g_toggle_got_hooks && orig_sysctl)
-    return orig_sysctl(name, namelen, info, infosize, newp, newlen);
-  return (orig_sysctl)
-             ? orig_sysctl(name, namelen, info, infosize, newp, newlen)
-             : -1;
-}
-
-static int stub_sysctlbyname(const char *name, void *info, size_t *infosize,
-                             void *newp, size_t newlen) {
-  if (g_toggle_got_hooks && orig_sysctlbyname)
-    return orig_sysctlbyname(name, info, infosize, newp, newlen);
-  return (orig_sysctlbyname)
-             ? orig_sysctlbyname(name, info, infosize, newp, newlen)
-             : -1;
-}
-
-static int stub_ptrace(int request, pid_t pid, void *addr, int data) {
-  if (g_toggle_ptrace_block) {
-    if (request == 31)
-      return 0; // PT_DENY_ATTACH
-  }
-  return (orig_ptrace) ? orig_ptrace(request, pid, addr, data) : -1;
-}
-
-// PROXY: AnoSDKIoctl
-static int (*orig_AnoSDKIoctl)(int, void *, int, void *, int) = NULL;
-static int stub_AnoSDKIoctl(int code, void *arg1, int arg2, void *arg3,
-                            int arg4) {
-  if (code == 1 || code == 10) {
-    return 0; // Absolute Success Spoof
-  }
-  if (orig_AnoSDKIoctl)
-    return orig_AnoSDKIoctl(code, arg1, arg2, arg3, arg4);
-  return 0;
-}
+// Signature & Environment checks (sysctl, ptrace, AnoSDKIoctl) REMOVED for
+// V.1.8.1 Absolute Stability.
 
 // PROXY: AnoSDKGetReportData REMOVED for Stability
 
@@ -271,11 +224,7 @@ void ApplyGOTHooks(void) {
   if (g_got_hooks_active)
     return;
   FindMyIndex();
-  struct XerxRebindEntry entries[10] = {
-      {"sysctl", (void *)stub_sysctl, (void **)&orig_sysctl},
-      {"sysctlbyname", (void *)stub_sysctlbyname, (void **)&orig_sysctlbyname},
-      {"ptrace", (void *)stub_ptrace, (void **)&orig_ptrace},
-      {"AnoSDKIoctl", (void *)stub_AnoSDKIoctl, (void **)&orig_AnoSDKIoctl},
+  struct XerxRebindEntry entries[6] = {
       {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
       {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
        (void **)&orig_ReportCharacterStateData},
@@ -288,7 +237,7 @@ void ApplyGOTHooks(void) {
       {"_dyld_get_image_header", (void *)stub_dyld_get_image_header,
        (void **)&orig_dyld_get_image_header},
   };
-  xerx_rebind(entries, 10);
+  xerx_rebind(entries, 6);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -608,11 +557,11 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
     [NSThread sleepForTimeInterval:0.4];
     dispatch_async(dispatch_get_main_queue(), ^{
       [self setProgress:0.6];
-      [self logMonitor:@"[SEQ] EXPERT PROXY (P3)..."];
+      [self logMonitor:@"[SEQ] TELEMETRY BLINDING (P3)..."];
     });
     if (anBase) {
-      [self logMonitor:@"[P3] AnoSDK Proxies Armed"];
-      // Logic handled by GOT Hooks
+      [self logMonitor:@"[P3] Behavioral Proxies Active"];
+      // Handled by GOT Hooks
     }
 
     [NSThread sleepForTimeInterval:0.4];
