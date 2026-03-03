@@ -201,6 +201,61 @@ static volatile BOOL g_toggle_ptrace_block = NO;
 
 // PROXY: AnoSDKGetReportData REMOVED for Stability
 
+// --- V.1.9 MASSIVE BEHAVIORAL SWIZZLES ---
+static id stub_ObjC_ReturnNil(id self, SEL _cmd, ...) { return nil; }
+
+static void XerxSwizzleMethod(const char *className, const char *methodName,
+                              BOOL isClassMethod) {
+  Class cls = objc_getClass(className);
+  if (!cls)
+    return;
+  SEL sel = sel_registerName(methodName);
+  if (!sel)
+    return;
+  Method m = isClassMethod ? class_getClassMethod(cls, sel)
+                           : class_getInstanceMethod(cls, sel);
+  if (m) {
+    class_replaceMethod(isClassMethod ? object_getClass((id)cls) : cls, sel,
+                        (IMP)stub_ObjC_ReturnNil, method_getTypeEncoding(m));
+  }
+}
+
+static void ApplyObjCSwizzles() {
+  XerxSwizzleMethod("IMSDKStatAdjustManager",
+                    "reportEvent:params:isRealtime:", YES);
+  XerxSwizzleMethod("IMSDKStatAdjustManager",
+                    "reportEvent:eventBody:isRealtime:", YES);
+  XerxSwizzleMethod("TDataMasterApplication",
+                    "reportBinaryWithSrcID:eventName:data:andLen:", NO);
+  XerxSwizzleMethod("TDataMasterApplication",
+                    "reportEventWithSrcID:eventName:AndEventKVArray:", NO);
+  XerxSwizzleMethod("GSDKReporter", "gsdkReport:Params:", NO);
+  XerxSwizzleMethod("PLCrashReporter",
+                    "enableCrashReporterAndReturnError:", NO);
+}
+
+// --- V.1.9 EXPANDED GOT STUBS ---
+static int (*orig_ReportAntiCheatInfo)(void *) = NULL;
+static int stub_ReportAntiCheatInfo(void *a) { return 0; }
+
+static int (*orig_ReportAntiCheatDetailData)(void *) = NULL;
+static int stub_ReportAntiCheatDetailData(void *a) { return 0; }
+
+static int (*orig_CrashReporter)(void *) = NULL;
+static int stub_CrashReporter(void *a) { return 0; }
+
+static int (*orig_GameBugReporter)(void *) = NULL;
+static int stub_GameBugReporter(void *a) { return 0; }
+
+static int (*orig_ServerReportExceptionData)(void *) = NULL;
+static int stub_ServerReportExceptionData(void *a) { return 0; }
+
+static int (*orig_CheckReportSecAttackFlow)(void *) = NULL;
+static int stub_CheckReportSecAttackFlow(void *a) { return 0; }
+
+static int (*orig_ClientReplayDataReporter)(void *) = NULL;
+static int stub_ClientReplayDataReporter(void *a) { return 0; }
+
 // PROXY: tdm_report
 static int (*orig_tdm_report)(void) = NULL;
 static int stub_tdm_report(void) {
@@ -224,12 +279,28 @@ void ApplyGOTHooks(void) {
   if (g_got_hooks_active)
     return;
   FindMyIndex();
-  struct XerxRebindEntry entries[6] = {
+  ApplyObjCSwizzles();
+
+  struct XerxRebindEntry entries[13] = {
       {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
       {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
        (void **)&orig_ReportCharacterStateData},
       {"ReportEventWithParam", (void *)stub_ReportEventWithParam,
        (void **)&orig_ReportEventWithParam},
+      {"ReportAntiCheatInfo", (void *)stub_ReportAntiCheatInfo,
+       (void **)&orig_ReportAntiCheatInfo},
+      {"ReportAntiCheatDetailData", (void *)stub_ReportAntiCheatDetailData,
+       (void **)&orig_ReportAntiCheatDetailData},
+      {"CrashReporter", (void *)stub_CrashReporter,
+       (void **)&orig_CrashReporter},
+      {"GameBugReporter", (void *)stub_GameBugReporter,
+       (void **)&orig_GameBugReporter},
+      {"ServerReportExceptionData", (void *)stub_ServerReportExceptionData,
+       (void **)&orig_ServerReportExceptionData},
+      {"CheckReportSecAttackFlow", (void *)stub_CheckReportSecAttackFlow,
+       (void **)&orig_CheckReportSecAttackFlow},
+      {"ClientReplayDataReporter", (void *)stub_ClientReplayDataReporter,
+       (void **)&orig_ClientReplayDataReporter},
       {"_dyld_get_image_count", (void *)stub_dyld_get_image_count,
        (void **)&orig_dyld_get_image_count},
       {"_dyld_get_image_name", (void *)stub_dyld_get_image_name,
@@ -237,7 +308,7 @@ void ApplyGOTHooks(void) {
       {"_dyld_get_image_header", (void *)stub_dyld_get_image_header,
        (void **)&orig_dyld_get_image_header},
   };
-  xerx_rebind(entries, 6);
+  xerx_rebind(entries, 13);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
