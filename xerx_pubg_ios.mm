@@ -200,8 +200,7 @@ static volatile BOOL g_toggle_ptrace_block = NO;
 #define ANOGS_IOCTL_OFF 0x2A572B
 #define ANOGS_REPORT_DATA_OFF 0x2A56BA
 
-// SVC 0x80 Direct Patches (anogs)
-static const uintptr_t g_svc_offsets[] = {0xe06c, 0x2d0c4, 0xf74c4};
+// SVC 0x80 Direct Patches REMOVED for Stability
 
 static int (*orig_sysctl)(int *, u_int, void *, size_t *, void *,
                           size_t) = NULL;
@@ -239,7 +238,7 @@ static int stub_ptrace(int request, pid_t pid, void *addr, int data) {
 static int (*orig_AnoSDKIoctl)(int, void *, int, void *, int) = NULL;
 static int stub_AnoSDKIoctl(int code, void *arg1, int arg2, void *arg3,
                             int arg4) {
-  if (code == 1 || code == 10 || code == 15 || code == 34) {
+  if (code == 1 || code == 10) {
     return 0; // Absolute Success Spoof
   }
   if (orig_AnoSDKIoctl)
@@ -247,26 +246,18 @@ static int stub_AnoSDKIoctl(int code, void *arg1, int arg2, void *arg3,
   return 0;
 }
 
-// PROXY: AnoSDKGetReportData
-static int (*orig_AnoSDKGetReportData)(void *, int, void *, int) = NULL;
-static int stub_AnoSDKGetReportData(void *arg1, int arg2, void *arg3,
-                                    int arg4) {
-  // Return "Perfect Clean" status mask
-  return 0x30B1BCBA;
-}
+// PROXY: AnoSDKGetReportData REMOVED for Stability
 
 static BOOL g_got_hooks_active = NO;
 void ApplyGOTHooks(void) {
   if (g_got_hooks_active)
     return;
   FindMyIndex();
-  struct XerxRebindEntry entries[8] = {
+  struct XerxRebindEntry entries[7] = {
       {"sysctl", (void *)stub_sysctl, (void **)&orig_sysctl},
       {"sysctlbyname", (void *)stub_sysctlbyname, (void **)&orig_sysctlbyname},
       {"ptrace", (void *)stub_ptrace, (void **)&orig_ptrace},
       {"AnoSDKIoctl", (void *)stub_AnoSDKIoctl, (void **)&orig_AnoSDKIoctl},
-      {"AnoSDKGetReportData", (void *)stub_AnoSDKGetReportData,
-       (void **)&orig_AnoSDKGetReportData},
       {"_dyld_get_image_count", (void *)stub_dyld_get_image_count,
        (void **)&orig_dyld_get_image_count},
       {"_dyld_get_image_name", (void *)stub_dyld_get_image_name,
@@ -274,7 +265,7 @@ void ApplyGOTHooks(void) {
       {"_dyld_get_image_header", (void *)stub_dyld_get_image_header,
        (void **)&orig_dyld_get_image_header},
   };
-  xerx_rebind(entries, 8);
+  xerx_rebind(entries, 7);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -588,17 +579,7 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
     });
     uintptr_t anBase = XerxFindImageBase("anogs");
     if (anBase) {
-      // Patch 3 surgical SVC locations (Direct Kernel Defusal)
-      for (int i = 0; i < 3; i++) {
-        uintptr_t addr = anBase + g_svc_offsets[i];
-        if (XerxIsWritable(addr)) {
-          // Patch SVC #0x80 -> MOV X0, #0; RET
-          *(uint32_t *)addr = 0xd2800000;       // mov x0, #0
-          *(uint32_t *)(addr + 4) = 0xd65f03c0; // ret
-          [self logMonitor:[NSString stringWithFormat:@"[SVC] Defused @ 0x%lx",
-                                                      g_svc_offsets[i]]];
-        }
-      }
+      [self logMonitor:@"[GHOST] AnoSDK Base Locked."];
     }
 
     [NSThread sleepForTimeInterval:0.4];
