@@ -20,8 +20,8 @@
  [TARGET: ShadowTrackerExtra (PUBG MOBILE iOS)]
  [BUNDLE: com.tencent.ig]
  [STATUS: AUTONOMOUS SOVEREIGNTY ENABLED]
- [BUILD: GHOST UNBOUND SYSCTL NEUTRALIZATION]
- [VERSION: V.2.2 - [GHOST UNBOUND]]
+ [BUILD: GHOST UNBOUND ULTIMATE SYSTEM PURGE]
+ [VERSION: V.2.2 - [SYSTEM PURGE]]
 */
 
 #ifndef P_TRACED
@@ -310,43 +310,6 @@ static int stub_RPC_Server_ReportSimulateCharacterLocation(void *a) {
 static int (*orig_RPC_Server_ReportSettingData)(void *) = NULL;
 static int stub_RPC_Server_ReportSettingData(void *a) { return 0; }
 
-// --- V.2.2 SYSCTL / ENVIRONMENT SURROGATES ---
-static int (*orig_sysctlbyname)(const char *, void *, size_t *, void *,
-                                size_t) = NULL;
-static int stub_sysctlbyname(const char *name, void *oldp, size_t *oldlenp,
-                             void *newp, size_t newlen) {
-  if (name) {
-    if (strstr(name, "kern.bootargs") ||
-        strstr(name, "security.mac.sandbox.sentinel")) {
-      return -1; // Fake "Not Found" for jailbreak environment checks
-    }
-  }
-  if (orig_sysctlbyname)
-    return orig_sysctlbyname(name, oldp, oldlenp, newp, newlen);
-  return sysctlbyname(name, oldp, oldlenp, newp, newlen);
-}
-
-static int (*orig_sysctl)(int *, u_int, void *, size_t *, void *,
-                          size_t) = NULL;
-static int stub_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
-                       void *newp, size_t newlen) {
-  int ret = 0;
-  if (orig_sysctl)
-    ret = orig_sysctl(name, namelen, oldp, oldlenp, newp, newlen);
-  else
-    ret = sysctl(name, namelen, oldp, oldlenp, newp, newlen);
-
-  // KERN_PROC_PID check for P_TRACED (debugger detection)
-  if (ret == 0 && oldp && name && namelen >= 4 && name[0] == CTL_KERN &&
-      name[1] == KERN_PROC && name[2] == KERN_PROC_PID) {
-    struct kinfo_proc *info = (struct kinfo_proc *)oldp;
-    if (info->kp_proc.p_flag & P_TRACED) {
-      info->kp_proc.p_flag &= ~P_TRACED; // Wipe the trace bit
-    }
-  }
-  return ret;
-}
-
 // PROXY: tdm_report
 static int (*orig_tdm_report)(void) = NULL;
 static int stub_tdm_report(void) {
@@ -361,8 +324,44 @@ static int stub_ReportCharacterStateData(void *a, void *b, void *c) {
 
 // PROXY: ReportEventWithParam
 static int (*orig_ReportEventWithParam)(void *, void *, void *) = NULL;
-static int stub_ReportEventWithParam(void *a, void *b, void *c) {
+static int stub_EventWithParam(void *a, void *b, void *c) {
   return 0; // Silence Generic Anomaly Reports
+}
+
+// --- V.2.2 SYSTEM PURGE PROXIES ---
+static int (*orig_ptrace)(int, pid_t, caddr_t, int) = NULL;
+static int stub_ptrace(int request, pid_t pid, caddr_t addr, int data) {
+  if (request == 31)
+    return 0; // PT_DENY_ATTACH
+  if (orig_ptrace)
+    return orig_ptrace(request, pid, addr, data);
+  return ptrace(request, pid, addr, data);
+}
+
+static int (*orig_syscall)(int, ...) = NULL;
+static int stub_syscall(int number, long a, long b, long c, long d, long e) {
+  if (number == 26)
+    return 0; // SYS_ptrace filter
+  if (orig_syscall)
+    return orig_syscall(number, a, b, c, d, e);
+  return syscall(number, a, b, c, d, e);
+}
+
+static int (*orig_ioctl)(int, unsigned long, ...) = NULL;
+static int stub_ioctl(int fildes, unsigned long request, void *argp) {
+  if (orig_ioctl)
+    return orig_ioctl(fildes, request, argp);
+  return ioctl(fildes, request, argp);
+}
+
+static int (*orig_AnoSDKIoctl)(int, int, void *, int) = NULL;
+static int stub_AnoSDKIoctl(int a, int b, void *c, int d) {
+  return 0; // Blind ACE kernel comms
+}
+
+static int (*orig_AnoSDKIoctlOld)(int, int, void *, int) = NULL;
+static int stub_AnoSDKIoctlOld(int a, int b, void *c, int d) {
+  return 0; // Blind ACE kernel comms
 }
 
 static BOOL g_got_hooks_active = NO;
@@ -372,7 +371,7 @@ void ApplyGOTHooks(void) {
   FindMyIndex();
   ApplyObjCSwizzles();
 
-  struct XerxRebindEntry entries[32] = {
+  struct XerxRebindEntry entries[40] = {
       {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
       {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
        (void **)&orig_ReportCharacterStateData},
@@ -432,16 +431,20 @@ void ApplyGOTHooks(void) {
       {"RPC_Server_ReportSettingData",
        (void *)stub_RPC_Server_ReportSettingData,
        (void **)&orig_RPC_Server_ReportSettingData},
-      {"sysctl", (void *)stub_sysctl, (void **)&orig_sysctl},
-      {"sysctlbyname", (void *)stub_sysctlbyname, (void **)&orig_sysctlbyname},
       {"_dyld_get_image_count", (void *)stub_dyld_get_image_count,
        (void **)&orig_dyld_get_image_count},
       {"_dyld_get_image_name", (void *)stub_dyld_get_image_name,
        (void **)&orig_dyld_get_image_name},
       {"_dyld_get_image_header", (void *)stub_dyld_get_image_header,
        (void **)&orig_dyld_get_image_header},
+      {"ptrace", (void *)stub_ptrace, (void **)&orig_ptrace},
+      {"syscall", (void *)stub_syscall, (void **)&orig_syscall},
+      {"ioctl", (void *)stub_ioctl, (void **)&orig_ioctl},
+      {"AnoSDKIoctl", (void *)stub_AnoSDKIoctl, (void **)&orig_AnoSDKIoctl},
+      {"AnoSDKIoctlOld", (void *)stub_AnoSDKIoctlOld,
+       (void **)&orig_AnoSDKIoctlOld},
   };
-  xerx_rebind(entries, 32);
+  xerx_rebind(entries, 35);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
