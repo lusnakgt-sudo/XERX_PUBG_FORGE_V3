@@ -678,6 +678,23 @@ static std::string GetUObjectName(uintptr_t uobject, uintptr_t gnames_base) {
   return std::string(name);
 }
 
+static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
+                                uint32_t value) {
+  uintptr_t addr = base + offset;
+  if (XerxIsWritable(addr)) {
+    *(uint32_t *)addr = value;
+    if (g_dashboard) {
+      NSString *msg =
+          [NSString stringWithFormat:@"0x%lx -> 0x%x", offset, value];
+      [g_dashboard logMonitor:msg];
+    }
+  } else {
+    if (g_dashboard)
+      [g_dashboard
+          logMonitor:[NSString stringWithFormat:@"0x%lx SKIP (SAFE)", offset]];
+  }
+}
+
 static void XerxLiveMatchScanner() {
   dispatch_async(
       dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
@@ -765,23 +782,6 @@ static void XerxLiveMatchScanner() {
       });
 }
 // ==========================================
-
-static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
-                                uint32_t value) {
-  uintptr_t addr = base + offset;
-  if (XerxIsWritable(addr)) {
-    *(uint32_t *)addr = value;
-    if (g_dashboard) {
-      NSString *msg =
-          [NSString stringWithFormat:@"0x%lx -> 0x%x", offset, value];
-      [g_dashboard logMonitor:msg];
-    }
-  } else {
-    if (g_dashboard)
-      [g_dashboard
-          logMonitor:[NSString stringWithFormat:@"0x%lx SKIP (SAFE)", offset]];
-  }
-}
 
 @interface XerxOrb : UIView
 @property(nonatomic, assign) id dashboard;
