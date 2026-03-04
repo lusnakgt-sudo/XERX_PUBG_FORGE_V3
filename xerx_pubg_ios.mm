@@ -448,6 +448,37 @@ static int stub_Integrity_check(void *a) { return 0; }
 static int (*orig_Integrity_detect)(void *) = NULL;
 static int stub_Integrity_detect(void *a) { return 0; }
 
+// --- V.2.5 NUCLEAR PROXIES ---
+static int (*orig_ace_pre_init)(void *) = NULL;
+static int stub_ace_pre_init(void *a) { return 0; }
+
+static int (*orig_ace_worker)(void *) = NULL;
+static int stub_ace_worker(void *a) { return 0; }
+
+static int (*orig_ace_rp_queue)(void *) = NULL;
+static int stub_ace_rp_queue(void *a) { return 0; }
+
+static int (*orig_ms_scan_start)(void *) = NULL;
+static int stub_ms_scan_start(void *a) { return 0; }
+
+static int (*orig_ace_schedule3)(void *) = NULL;
+static int stub_ace_schedule3(void *a) { return 0; }
+
+static int (*orig_ace_cs2)(void *) = NULL;
+static int stub_ace_cs2(void *a) { return 0; }
+
+static int (*orig_ace_cs3)(void *) = NULL;
+static int stub_ace_cs3(void *a) { return 0; }
+
+static int (*orig_ReportManager)(void *) = NULL;
+static int stub_ReportManager(void *a) { return 0; }
+
+static int (*orig_TDataMasterReportHub)(void *) = NULL;
+static int stub_TDataMasterReportHub(void *a) { return 0; }
+
+static int (*orig_SecurityLogHitTargetInfoCollector)(void *) = NULL;
+static int stub_SecurityLogHitTargetInfoCollector(void *a) { return 0; }
+
 static BOOL g_got_hooks_active = NO;
 void ApplyGOTHooks(void) {
   if (g_got_hooks_active)
@@ -455,136 +486,33 @@ void ApplyGOTHooks(void) {
   FindMyIndex();
   ApplyObjCSwizzles();
 
-  struct XerxRebindEntry entries[60] = {
-      {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
-      {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
-       (void **)&orig_ReportCharacterStateData},
-      {"ReportEventWithParam", (void *)stub_ReportEventWithParam,
-       (void **)&orig_ReportEventWithParam},
-      {"ReportAntiCheatInfo", (void *)stub_ReportAntiCheatInfo,
-       (void **)&orig_ReportAntiCheatInfo},
-      {"ReportAntiCheatDetailData", (void *)stub_ReportAntiCheatDetailData,
-       (void **)&orig_ReportAntiCheatDetailData},
-      {"CrashReporter", (void *)stub_CrashReporter,
-       (void **)&orig_CrashReporter},
-      {"GameBugReporter", (void *)stub_GameBugReporter,
-       (void **)&orig_GameBugReporter},
-      {"ServerReportExceptionData", (void *)stub_ServerReportExceptionData,
-       (void **)&orig_ServerReportExceptionData},
-      {"CheckReportSecAttackFlow", (void *)stub_CheckReportSecAttackFlow,
-       (void **)&orig_CheckReportSecAttackFlow},
-      {"ClientReplayDataReporter", (void *)stub_ClientReplayDataReporter,
-       (void **)&orig_ClientReplayDataReporter},
-      {"ReportGameSetting", (void *)stub_ReportGameSetting,
-       (void **)&orig_ReportGameSetting},
-      {"ReportExceptionOnVehicle", (void *)stub_ReportExceptionOnVehicle,
-       (void **)&orig_ReportExceptionOnVehicle},
-      {"ReportAudioDebugData", (void *)stub_ReportAudioDebugData,
-       (void **)&orig_ReportAudioDebugData},
-      {"ReportAttrException", (void *)stub_ReportAttrException,
-       (void **)&orig_ReportAttrException},
-      {"ReportSpeedException", (void *)stub_ReportSpeedException,
-       (void **)&orig_ReportSpeedException},
-      {"ReportPVSException", (void *)stub_ReportPVSException,
-       (void **)&orig_ReportPVSException},
-      {"CatchReportAntiCheatDetailData",
-       (void *)stub_CatchReportAntiCheatDetailData,
-       (void **)&orig_CatchReportAntiCheatDetailData},
-      {"ReportAutonomousMoveSpeedParam",
-       (void *)stub_ReportAutonomousMoveSpeedParam,
-       (void **)&orig_ReportAutonomousMoveSpeedParam},
-      {"ReportSimulateDragTimer", (void *)stub_ReportSimulateDragTimer,
-       (void **)&orig_ReportSimulateDragTimer},
-      {"SeverReportSimulateDrag", (void *)stub_SeverReportSimulateDrag,
-       (void **)&orig_SeverReportSimulateDrag},
-      {"CheckReportSecAttackFlowWithAttackFlow",
-       (void *)stub_CheckReportSecAttackFlowWithAttackFlow,
-       (void **)&orig_CheckReportSecAttackFlowWithAttackFlow},
-      {"ReportDSPlayerDieCircleFlow", (void *)stub_ReportDSPlayerDieCircleFlow,
-       (void **)&orig_ReportDSPlayerDieCircleFlow},
-      {"ReportPlayerKillFlow", (void *)stub_ReportPlayerKillFlow,
-       (void **)&orig_ReportPlayerKillFlow},
-      {"ReportAimFlow", (void *)stub_ReportAimFlow,
-       (void **)&orig_ReportAimFlow},
-      {"RPC_Server_ReportCharacterStateData",
-       (void *)stub_RPC_Server_ReportCharacterStateData,
-       (void **)&orig_RPC_Server_ReportCharacterStateData},
-      {"RPC_Server_ReportSimulateCharacterLocation",
-       (void *)stub_RPC_Server_ReportSimulateCharacterLocation,
-       (void **)&orig_RPC_Server_ReportSimulateCharacterLocation},
-      {"RPC_Server_ReportSettingData",
-       (void *)stub_RPC_Server_ReportSettingData,
-       (void **)&orig_RPC_Server_ReportSettingData},
-      {"_dyld_get_image_count", (void *)stub_dyld_get_image_count,
-       (void **)&orig_dyld_get_image_count},
-      {"_dyld_get_image_name", (void *)stub_dyld_get_image_name,
-       (void **)&orig_dyld_get_image_name},
-      {"_dyld_get_image_header", (void *)stub_dyld_get_image_header,
-       (void **)&orig_dyld_get_image_header},
-      {"ptrace", (void *)stub_ptrace, (void **)&orig_ptrace},
-      {"syscall", (void *)stub_syscall, (void **)&orig_syscall},
-      {"ioctl", (void *)stub_ioctl, (void **)&orig_ioctl},
-      {"AnoSDKIoctl", (void *)stub_AnoSDKIoctl, (void **)&orig_AnoSDKIoctl},
-      {"AnoSDKIoctlOld", (void *)stub_AnoSDKIoctlOld,
-       (void **)&orig_AnoSDKIoctlOld},
-      {"WeaponReport", (void *)stub_WeaponReport, (void **)&orig_WeaponReport},
-      {"TotalWeaponReport", (void *)stub_TotalWeaponReport,
-       (void **)&orig_TotalWeaponReport},
-      {"ShovelAntiCheat", (void *)stub_ShovelAntiCheat,
-       (void **)&orig_ShovelAntiCheat},
-      {"OnWeaponSecurityLogShootActorDelegate",
-       (void *)stub_OnWeaponSecurityLogShootActorDelegate,
-       (void **)&orig_OnWeaponSecurityLogShootActorDelegate},
-      {"LuaNotifySecurityAbnormalJump",
-       (void *)stub_LuaNotifySecurityAbnormalJump,
-       (void **)&orig_LuaNotifySecurityAbnormalJump},
-      {"ReportJumpFlow", (void *)stub_ReportJumpFlow,
-       (void **)&orig_ReportJumpFlow},
-      {"GetMaxWeaponReportNum", (void *)stub_GetMaxWeaponReportNum,
-       (void **)&orig_GetMaxWeaponReportNum},
-      {"NotifyAuthority", (void *)stub_NotifyAuthority,
-       (void **)&orig_NotifyAuthority},
-      {"GNLReportManager", (void *)stub_GNLReportManager,
-       (void **)&orig_GNLReportManager},
-      {"TDataMasterReportManager", (void *)stub_TDataMasterReportManager,
-       (void **)&orig_TDataMasterReportManager},
-      {"SecurityLogSender", (void *)stub_SecurityLogSender,
-       (void **)&orig_SecurityLogSender},
-      {"SecurityLogWeaponCollector", (void *)stub_SecurityLogWeaponCollector,
-       (void **)&orig_SecurityLogWeaponCollector},
-      {"ShootIntervalAnomaly", (void *)stub_ShootIntervalAnomaly,
-       (void **)&orig_ShootIntervalAnomaly},
-      {"ClientReportReq", (void *)stub_ClientReportReq,
-       (void **)&orig_ClientReportReq},
-      {"PlayerSecurityInfoCollector", (void *)stub_PlayerSecurityInfoCollector,
-       (void **)&orig_PlayerSecurityInfoCollector},
-      {"PlayerReportData", (void *)stub_PlayerReportData,
-       (void **)&orig_PlayerReportData},
-      {"IntelligentIntegrity", (void *)stub_IntelligentIntegrity,
-       (void **)&orig_IntelligentIntegrity},
-      {"IntegrityItemCheckResultAsBytes",
-       (void *)stub_IntegrityItemCheckResultAsBytes,
-       (void **)&orig_IntegrityItemCheckResultAsBytes},
-      {"TimeWatchDogComponent", (void *)stub_TimeWatchDogComponent,
-       (void **)&orig_TimeWatchDogComponent},
-      {"Audit", (void *)stub_Audit, (void **)&orig_Audit},
-      {"SecurityLogHitTargetInfo", (void *)stub_SecurityLogHitTargetInfo,
-       (void **)&orig_SecurityLogHitTargetInfo},
-      {"EnableDataTunnelReport", (void *)stub_EnableDataTunnelReport,
-       (void **)&orig_EnableDataTunnelReport},
-      {"integrity_check", (void *)stub_Integrity_check,
-       (void **)&orig_Integrity_check},
-      {"integrity_detect", (void *)stub_Integrity_detect,
-       (void **)&orig_Integrity_detect},
-  };
-  xerx_rebind(entries, 60);
-  g_got_hooks_active = YES;
-  if (g_dashboard) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [g_dashboard logMonitor:@"[GHOST] Invisibility ACTIVE"];
-      [g_dashboard logMonitor:@"[GOT]  Stubs rebind OK"];
-    });
-  }
+  {"integrity_detect", (void *)stub_Integrity_detect,
+   (void **)&orig_Integrity_detect},
+      {"ace_pre_init", (void *)stub_ace_pre_init, (void **)&orig_ace_pre_init},
+      {"ace_worker", (void *)stub_ace_worker, (void **)&orig_ace_worker},
+      {"ace_rp_queue", (void *)stub_ace_rp_queue, (void **)&orig_ace_rp_queue},
+      {"ms_scan_start", (void *)stub_ms_scan_start,
+       (void **)&orig_ms_scan_start},
+      {"ace_schedule3", (void *)stub_ace_schedule3,
+       (void **)&orig_ace_schedule3},
+      {"ace_cs2", (void *)stub_ace_cs2, (void **)&orig_ace_cs2},
+      {"ace_cs3", (void *)stub_ace_cs3, (void **)&orig_ace_cs3},
+      {"ReportManager", (void *)stub_ReportManager,
+       (void **)&orig_ReportManager},
+      {"TDataMasterReportHub", (void *)stub_TDataMasterReportHub,
+       (void **)&orig_TDataMasterReportHub},
+      {"SecurityLogHitTargetInfoCollector",
+       (void *)stub_SecurityLogHitTargetInfoCollector,
+       (void **)&orig_SecurityLogHitTargetInfoCollector},
+};
+xerx_rebind(entries, 70);
+g_got_hooks_active = YES;
+if (g_dashboard) {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [g_dashboard logMonitor:@"[GHOST] Invisibility ACTIVE"];
+    [g_dashboard logMonitor:@"[GOT]  Stubs rebind OK"];
+  });
+}
 }
 
 static BOOL XerxIsWritable(uintptr_t addr) {
@@ -710,9 +638,17 @@ static void XerxLiveMatchScanner() {
         while (true) {
           [NSThread sleepForTimeInterval:2.0];
 
-          // V.2.4 GLOBAL INTEGRITY KILL-SWITCH
+          // V.2.5 NUCLEAR ENGINE KILL-SWITCH
           if (anBase) {
-            WriteByte(anBase + 0x283B60, 0); // Disable g_integrity_enable
+            WriteByte(anBase + 0x283B58, 0); // Disable ace_monitor
+            WriteByte(anBase + 0x283B5C, 0); // Disable tp2_scan
+            WriteByte(anBase + 0x283B60, 0); // Disable integrity
+            WriteByte(anBase + 0x283B64, 0); // Disable timing_check
+            WriteByte(anBase + 0x283B68, 0); // Disable netflow
+            WriteByte(anBase + 0x283BA0, 0); // Disable report_queue
+          }
+          if (baseAddr) {
+            WriteByte(baseAddr + 0x15ED128, 0); // Terminate g_ace_thread
           }
 
           uintptr_t gWorld = ReadPointer(gWorldAddr);
