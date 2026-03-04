@@ -8,13 +8,20 @@
 #import <objc/runtime.h>
 #import <stdint.h>
 #import <string>
-#import <sys/ioctl.h>
-#import <sys/ptrace.h>
 #import <sys/syscall.h>
 #import <sys/sysctl.h>
 #import <sys/time.h>
+#import <sys/types.h>
 #import <unistd.h>
 #import <vector>
+
+// Manual definitions for missing headers (iOS SDK isolation)
+#ifndef PT_DENY_ATTACH
+#define PT_DENY_ATTACH 31
+#endif
+typedef char *caddr_t;
+extern "C" int ioctl(int, unsigned long, ...);
+extern "C" int ptrace(int, pid_t, caddr_t, int);
 
 /*
  -------------TUXSHARX PWNED ME----------------
