@@ -20,7 +20,7 @@
  [TARGET: ShadowTrackerExtra (PUBG MOBILE iOS)]
  [BUNDLE: com.tencent.ig]
  [STATUS: AUTONOMOUS SOVEREIGNTY ENABLED]
- [BUILD: GHOST UNBOUND SYSTEM NEUTRALIZATION]
+ [BUILD: GHOST UNBOUND SYSCTL NEUTRALIZATION]
  [VERSION: V.2.2 - [GHOST UNBOUND]]
 */
 
@@ -99,50 +99,6 @@ static const struct mach_header *stub_dyld_get_image_header(uint32_t index) {
   if (orig_dyld_get_image_header)
     return orig_dyld_get_image_header(index);
   return _dyld_get_image_header(index);
-}
-
-static BOOL XerxIsWritable(uintptr_t addr) {
-  vm_address_t address = (vm_address_t)addr;
-  vm_size_t size = 0;
-  vm_region_submap_short_info_data_64_t info;
-  mach_msg_type_number_t count = VM_REGION_SUBMAP_SHORT_INFO_COUNT_64;
-  uint32_t depth = 0;
-  kern_return_t kr =
-      vm_region_recurse_64(mach_task_self(), &address, &size, &depth,
-                           (vm_region_recurse_info_t)&info, &count);
-  return (kr == KERN_SUCCESS && (info.protection & VM_PROT_WRITE) != 0);
-}
-
-static void WriteByte(uintptr_t addr, uint8_t val) {
-  if (!addr)
-    return;
-  if (XerxIsWritable(addr)) {
-    *(uint8_t *)addr = val;
-  }
-}
-
-static uintptr_t ReadPointer(uintptr_t addr) {
-  if (!addr)
-    return 0;
-  uintptr_t val = 0;
-  @try {
-    val = *(uintptr_t *)addr;
-  } @catch (...) {
-    val = 0;
-  }
-  return val;
-}
-
-static uint32_t ReadDword(uintptr_t addr) {
-  if (!addr)
-    return 0;
-  uint32_t val = 0;
-  @try {
-    val = *(uint32_t *)addr;
-  } @catch (...) {
-    val = 0;
-  }
-  return val;
 }
 
 static void xerx_rebind_in_image(const struct mach_header *header,
@@ -354,7 +310,22 @@ static int stub_RPC_Server_ReportSimulateCharacterLocation(void *a) {
 static int (*orig_RPC_Server_ReportSettingData)(void *) = NULL;
 static int stub_RPC_Server_ReportSettingData(void *a) { return 0; }
 
-// --- V.2.2 SYSTEM ENVIRONMENT STUBS ---
+// --- V.2.2 SYSCTL / ENVIRONMENT SURROGATES ---
+static int (*orig_sysctlbyname)(const char *, void *, size_t *, void *,
+                                size_t) = NULL;
+static int stub_sysctlbyname(const char *name, void *oldp, size_t *oldlenp,
+                             void *newp, size_t newlen) {
+  if (name) {
+    if (strstr(name, "kern.bootargs") ||
+        strstr(name, "security.mac.sandbox.sentinel")) {
+      return -1; // Fake "Not Found" for jailbreak environment checks
+    }
+  }
+  if (orig_sysctlbyname)
+    return orig_sysctlbyname(name, oldp, oldlenp, newp, newlen);
+  return sysctlbyname(name, oldp, oldlenp, newp, newlen);
+}
+
 static int (*orig_sysctl)(int *, u_int, void *, size_t *, void *,
                           size_t) = NULL;
 static int stub_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
@@ -365,38 +336,15 @@ static int stub_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
   else
     ret = sysctl(name, namelen, oldp, oldlenp, newp, newlen);
 
-  if (namelen >= 2 && name[0] == CTL_KERN && name[1] == KERN_PROC) {
-    if (oldp && oldlenp && *oldlenp >= sizeof(struct kinfo_proc)) {
-      struct kinfo_proc *kp = (struct kinfo_proc *)oldp;
-      if (kp->kp_proc.p_flag & P_TRACED) {
-        kp->kp_proc.p_flag &= ~P_TRACED; // Ghost out debugger bit
-      }
+  // KERN_PROC_PID check for P_TRACED (debugger detection)
+  if (ret == 0 && oldp && name && namelen >= 4 && name[0] == CTL_KERN &&
+      name[1] == KERN_PROC && name[2] == KERN_PROC_PID) {
+    struct kinfo_proc *info = (struct kinfo_proc *)oldp;
+    if (info->kp_proc.p_flag & P_TRACED) {
+      info->kp_proc.p_flag &= ~P_TRACED; // Wipe the trace bit
     }
   }
   return ret;
-}
-
-static int (*orig_sysctlbyname)(const char *, void *, size_t *, void *,
-                                size_t) = NULL;
-static int stub_sysctlbyname(const char *name, void *oldp, size_t *oldlenp,
-                             void *newp, size_t newlen) {
-  if (name && (strstr(name, "jailbreak") || strstr(name, "apt") ||
-               strstr(name, "cydia"))) {
-    return -1; // Force "Not Found" for jailbreak strings
-  }
-  if (orig_sysctlbyname)
-    return orig_sysctlbyname(name, oldp, oldlenp, newp, newlen);
-  return sysctlbyname(name, oldp, oldlenp, newp, newlen);
-}
-
-static int (*orig_ptrace)(int, pid_t, caddr_t, int) = NULL;
-static int stub_ptrace(int request, pid_t pid, caddr_t addr, int data) {
-  if (request == 31) { // PT_DENY_ATTACH
-    return 0;          // Pretend it worked
-  }
-  if (orig_ptrace)
-    return orig_ptrace(request, pid, addr, data);
-  return 0;
 }
 
 // PROXY: tdm_report
@@ -424,7 +372,7 @@ void ApplyGOTHooks(void) {
   FindMyIndex();
   ApplyObjCSwizzles();
 
-  struct XerxRebindEntry entries[34] = {
+  struct XerxRebindEntry entries[32] = {
       {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
       {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
        (void **)&orig_ReportCharacterStateData},
@@ -484,17 +432,16 @@ void ApplyGOTHooks(void) {
       {"RPC_Server_ReportSettingData",
        (void *)stub_RPC_Server_ReportSettingData,
        (void **)&orig_RPC_Server_ReportSettingData},
+      {"sysctl", (void *)stub_sysctl, (void **)&orig_sysctl},
+      {"sysctlbyname", (void *)stub_sysctlbyname, (void **)&orig_sysctlbyname},
       {"_dyld_get_image_count", (void *)stub_dyld_get_image_count,
        (void **)&orig_dyld_get_image_count},
       {"_dyld_get_image_name", (void *)stub_dyld_get_image_name,
        (void **)&orig_dyld_get_image_name},
       {"_dyld_get_image_header", (void *)stub_dyld_get_image_header,
        (void **)&orig_dyld_get_image_header},
-      {"sysctl", (void *)stub_sysctl, (void **)&orig_sysctl},
-      {"sysctlbyname", (void *)stub_sysctlbyname, (void **)&orig_sysctlbyname},
-      {"ptrace", (void *)stub_ptrace, (void **)&orig_ptrace},
   };
-  xerx_rebind(entries, 34);
+  xerx_rebind(entries, 32);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -502,6 +449,18 @@ void ApplyGOTHooks(void) {
       [g_dashboard logMonitor:@"[GOT]  Stubs rebind OK"];
     });
   }
+}
+
+static BOOL XerxIsWritable(uintptr_t addr) {
+  vm_address_t address = (vm_address_t)addr;
+  vm_size_t size = 0;
+  vm_region_submap_short_info_data_64_t info;
+  mach_msg_type_number_t count = VM_REGION_SUBMAP_SHORT_INFO_COUNT_64;
+  uint32_t depth = 0;
+  kern_return_t kr =
+      vm_region_recurse_64(mach_task_self(), &address, &size, &depth,
+                           (vm_region_recurse_info_t)&info, &count);
+  return (kr == KERN_SUCCESS && (info.protection & VM_PROT_WRITE) != 0);
 }
 
 static uintptr_t XerxFindImageBase(const char *image_name) {
@@ -514,37 +473,6 @@ static uintptr_t XerxFindImageBase(const char *image_name) {
   return 0;
 }
 
-static void XerxAnogsPatcher(uintptr_t base) {
-  if (!base)
-    return;
-  // Patch ptrace svc 0x80 @ 0x32f34
-  // Instruction: 01 10 00 D4 (svc #0x80)
-  // We overwrite with RET: C0 03 5F D6
-  uintptr_t p1 = base + 0x32f34;
-  WriteByte(p1 + 0, 0xC0);
-  WriteByte(p1 + 1, 0x03);
-  WriteByte(p1 + 2, 0x5F);
-  WriteByte(p1 + 3, 0xD6);
-
-  // Patch indirect syscall wrappers (clustering at 0x9D298 - 0x9DF80)
-  // We'll neutralize primary entry points
-  uintptr_t syscall_sites[] = {0x8928,  0x9D298,  0x9D2D0,  0x9D328,
-                               0x9D380, 0x1EAE88, 0x1EB610, 0x1EB660};
-  for (int i = 0; i < 8; i++) {
-    uintptr_t addr = base + syscall_sites[i];
-    // Overwrite SVC with MOV X0, #0 (E0 03 27 1E) + RET (C0 03 5F D6)
-    // Actually MOV X0, #0 is better for syscalls that return status
-    WriteByte(addr + 0, 0x00);
-    WriteByte(addr + 1, 0x00);
-    WriteByte(addr + 2, 0x80);
-    WriteByte(addr + 3, 0xD2); // MOV X0, #0
-    WriteByte(addr + 4, 0xC0);
-    WriteByte(addr + 5, 0x03);
-    WriteByte(addr + 6, 0x5F);
-    WriteByte(addr + 7, 0xD6); // RET
-  }
-}
-
 // ==========================================
 // V.2.0 DYNAMIC UE4 ENGINE NEUTRALIZATION
 // ==========================================
@@ -552,6 +480,39 @@ static void XerxAnogsPatcher(uintptr_t base) {
 #define OFFSET_GNAMES 0x802BC78
 #define OFFSET_GWORLD 0xA4A0768
 #define OFFSET_GUOBJECTARRAY 0x9C88060
+
+static uintptr_t ReadPointer(uintptr_t addr) {
+  if (!addr)
+    return 0;
+  uintptr_t val = 0;
+  // Simple direct read. Assumes memory is valid map.
+  @try {
+    val = *(uintptr_t *)addr;
+  } @catch (...) {
+    val = 0;
+  }
+  return val;
+}
+
+static uint32_t ReadDword(uintptr_t addr) {
+  if (!addr)
+    return 0;
+  uint32_t val = 0;
+  @try {
+    val = *(uint32_t *)addr;
+  } @catch (...) {
+    val = 0;
+  }
+  return val;
+}
+
+static void WriteByte(uintptr_t addr, uint8_t val) {
+  if (!addr)
+    return;
+  if (XerxIsWritable(addr)) {
+    *(uint8_t *)addr = val;
+  }
+}
 
 static std::string GetUObjectName(uintptr_t uobject, uintptr_t gnames_base) {
   if (!uobject || !gnames_base)
@@ -925,15 +886,7 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
     uintptr_t anBase = XerxFindImageBase("anogs");
     if (anBase) {
       [self logMonitor:@"[GHOST] AnoSDK Base Locked."];
-      XerxAnogsPatcher(anBase);
-      [self logMonitor:@"[SEQ] SVC 0x80 Neutralized."];
-    } else {
-      [self logMonitor:@"[!] AnoSDK Base Not Found."];
     }
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [self setProgress:0.6];
-      [self logMonitor:@"[GHOST] Muting Engine Components..."];
-    });
 
     [NSThread sleepForTimeInterval:0.4];
     dispatch_async(dispatch_get_main_queue(), ^{
