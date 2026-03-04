@@ -20,8 +20,8 @@
  [TARGET: ShadowTrackerExtra (PUBG MOBILE iOS)]
  [BUNDLE: com.tencent.ig]
  [STATUS: AUTONOMOUS SOVEREIGNTY ENABLED]
- [BUILD: GHOST UNBOUND ULTIMATE PURGE]
- [VERSION: V.2.1 - [GHOST UNBOUND]]
+ [BUILD: GHOST UNBOUND SYSTEM NEUTRALIZATION]
+ [VERSION: V.2.2 - [GHOST UNBOUND]]
 */
 
 #ifndef P_TRACED
@@ -310,6 +310,51 @@ static int stub_RPC_Server_ReportSimulateCharacterLocation(void *a) {
 static int (*orig_RPC_Server_ReportSettingData)(void *) = NULL;
 static int stub_RPC_Server_ReportSettingData(void *a) { return 0; }
 
+// --- V.2.2 SYSTEM ENVIRONMENT STUBS ---
+static int (*orig_sysctl)(int *, u_int, void *, size_t *, void *,
+                          size_t) = NULL;
+static int stub_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
+                       void *newp, size_t newlen) {
+  int ret = 0;
+  if (orig_sysctl)
+    ret = orig_sysctl(name, namelen, oldp, oldlenp, newp, newlen);
+  else
+    ret = sysctl(name, namelen, oldp, oldlenp, newp, newlen);
+
+  if (namelen >= 2 && name[0] == CTL_KERN && name[1] == KERN_PROC) {
+    if (oldp && oldlenp && *oldlenp >= sizeof(struct kinfo_proc)) {
+      struct kinfo_proc *kp = (struct kinfo_proc *)oldp;
+      if (kp->kp_proc.p_flag & P_TRACED) {
+        kp->kp_proc.p_flag &= ~P_TRACED; // Ghost out debugger bit
+      }
+    }
+  }
+  return ret;
+}
+
+static int (*orig_sysctlbyname)(const char *, void *, size_t *, void *,
+                                size_t) = NULL;
+static int stub_sysctlbyname(const char *name, void *oldp, size_t *oldlenp,
+                             void *newp, size_t newlen) {
+  if (name && (strstr(name, "jailbreak") || strstr(name, "apt") ||
+               strstr(name, "cydia"))) {
+    return -1; // Force "Not Found" for jailbreak strings
+  }
+  if (orig_sysctlbyname)
+    return orig_sysctlbyname(name, oldp, oldlenp, newp, newlen);
+  return sysctlbyname(name, oldp, oldlenp, newp, newlen);
+}
+
+static int (*orig_ptrace)(int, pid_t, caddr_t, int) = NULL;
+static int stub_ptrace(int request, pid_t pid, caddr_t addr, int data) {
+  if (request == 31) { // PT_DENY_ATTACH
+    return 0;          // Pretend it worked
+  }
+  if (orig_ptrace)
+    return orig_ptrace(request, pid, addr, data);
+  return 0;
+}
+
 // PROXY: tdm_report
 static int (*orig_tdm_report)(void) = NULL;
 static int stub_tdm_report(void) {
@@ -335,7 +380,7 @@ void ApplyGOTHooks(void) {
   FindMyIndex();
   ApplyObjCSwizzles();
 
-  struct XerxRebindEntry entries[30] = {
+  struct XerxRebindEntry entries[34] = {
       {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
       {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
        (void **)&orig_ReportCharacterStateData},
@@ -401,8 +446,11 @@ void ApplyGOTHooks(void) {
        (void **)&orig_dyld_get_image_name},
       {"_dyld_get_image_header", (void *)stub_dyld_get_image_header,
        (void **)&orig_dyld_get_image_header},
+      {"sysctl", (void *)stub_sysctl, (void **)&orig_sysctl},
+      {"sysctlbyname", (void *)stub_sysctlbyname, (void **)&orig_sysctlbyname},
+      {"ptrace", (void *)stub_ptrace, (void **)&orig_ptrace},
   };
-  xerx_rebind(entries, 30);
+  xerx_rebind(entries, 34);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -432,6 +480,37 @@ static uintptr_t XerxFindImageBase(const char *image_name) {
       return (uintptr_t)_dyld_get_image_header(i);
   }
   return 0;
+}
+
+static void XerxAnogsPatcher(uintptr_t base) {
+  if (!base)
+    return;
+  // Patch ptrace svc 0x80 @ 0x32f34
+  // Instruction: 01 10 00 D4 (svc #0x80)
+  // We overwrite with RET: C0 03 5F D6
+  uintptr_t p1 = base + 0x32f34;
+  WriteByte(p1 + 0, 0xC0);
+  WriteByte(p1 + 1, 0x03);
+  WriteByte(p1 + 2, 0x5F);
+  WriteByte(p1 + 3, 0xD6);
+
+  // Patch indirect syscall wrappers (clustering at 0x9D298 - 0x9DF80)
+  // We'll neutralize primary entry points
+  uintptr_t syscall_sites[] = {0x8928,  0x9D298,  0x9D2D0,  0x9D328,
+                               0x9D380, 0x1EAE88, 0x1EB610, 0x1EB660};
+  for (int i = 0; i < 8; i++) {
+    uintptr_t addr = base + syscall_sites[i];
+    // Overwrite SVC with MOV X0, #0 (E0 03 27 1E) + RET (C0 03 5F D6)
+    // Actually MOV X0, #0 is better for syscalls that return status
+    WriteByte(addr + 0, 0x00);
+    WriteByte(addr + 1, 0x00);
+    WriteByte(addr + 2, 0x80);
+    WriteByte(addr + 3, 0xD2); // MOV X0, #0
+    WriteByte(addr + 4, 0xC0);
+    WriteByte(addr + 5, 0x03);
+    WriteByte(addr + 6, 0x5F);
+    WriteByte(addr + 7, 0xD6); // RET
+  }
 }
 
 // ==========================================
@@ -847,7 +926,15 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
     uintptr_t anBase = XerxFindImageBase("anogs");
     if (anBase) {
       [self logMonitor:@"[GHOST] AnoSDK Base Locked."];
+      XerxAnogsPatcher(anBase);
+      [self logMonitor:@"[SEQ] SVC 0x80 Neutralized."];
+    } else {
+      [self logMonitor:@"[!] AnoSDK Base Not Found."];
     }
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self setProgress:0.6];
+      [self logMonitor:@"[GHOST] Muting Engine Components..."];
+    });
 
     [NSThread sleepForTimeInterval:0.4];
     dispatch_async(dispatch_get_main_queue(), ^{
