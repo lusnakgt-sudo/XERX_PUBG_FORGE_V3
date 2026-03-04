@@ -333,11 +333,11 @@ static int stub_ReportEventWithParam(void *a, void *b, void *c) {
 // --- V.2.2 SYSTEM PURGE PROXIES ---
 static int (*orig_ptrace)(int, pid_t, caddr_t, int) = NULL;
 static int stub_ptrace(int request, pid_t pid, caddr_t addr, int data) {
-  if (request == 31)
-    return 0; // PT_DENY_ATTACH
+  if (request == PT_DENY_ATTACH)
+    return 0; // Deny the denial
   if (orig_ptrace)
     return orig_ptrace(request, pid, addr, data);
-  return ptrace(request, pid, addr, data);
+  return 0;
 }
 
 static int (*orig_syscall)(int, ...) = NULL;
@@ -352,8 +352,8 @@ static int stub_syscall(int number, long a, long b, long c, long d, long e) {
 static int (*orig_ioctl)(int, unsigned long, ...) = NULL;
 static int stub_ioctl(int fildes, unsigned long request, void *argp) {
   if (orig_ioctl)
-    return orig_ioctl(fildes, request, argp);
-  return ioctl(fildes, request, argp);
+    return orig_ioctl(fildes, request, (void *)argp);
+  return 0;
 }
 
 static int (*orig_AnoSDKIoctl)(int, int, void *, int) = NULL;
