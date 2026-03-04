@@ -448,37 +448,6 @@ static int stub_Integrity_check(void *a) { return 0; }
 static int (*orig_Integrity_detect)(void *) = NULL;
 static int stub_Integrity_detect(void *a) { return 0; }
 
-// --- V.2.5 NUCLEAR PROXIES ---
-static int (*orig_ace_pre_init)(void *) = NULL;
-static int stub_ace_pre_init(void *a) { return 0; }
-
-static int (*orig_ace_worker)(void *) = NULL;
-static int stub_ace_worker(void *a) { return 0; }
-
-static int (*orig_ace_rp_queue)(void *) = NULL;
-static int stub_ace_rp_queue(void *a) { return 0; }
-
-static int (*orig_ms_scan_start)(void *) = NULL;
-static int stub_ms_scan_start(void *a) { return 0; }
-
-static int (*orig_ace_schedule3)(void *) = NULL;
-static int stub_ace_schedule3(void *a) { return 0; }
-
-static int (*orig_ace_cs2)(void *) = NULL;
-static int stub_ace_cs2(void *a) { return 0; }
-
-static int (*orig_ace_cs3)(void *) = NULL;
-static int stub_ace_cs3(void *a) { return 0; }
-
-static int (*orig_ReportManager)(void *) = NULL;
-static int stub_ReportManager(void *a) { return 0; }
-
-static int (*orig_TDataMasterReportHub)(void *) = NULL;
-static int stub_TDataMasterReportHub(void *a) { return 0; }
-
-static int (*orig_SecurityLogHitTargetInfoCollector)(void *) = NULL;
-static int stub_SecurityLogHitTargetInfoCollector(void *a) { return 0; }
-
 static BOOL g_got_hooks_active = NO;
 void ApplyGOTHooks(void) {
   if (g_got_hooks_active)
@@ -486,7 +455,7 @@ void ApplyGOTHooks(void) {
   FindMyIndex();
   ApplyObjCSwizzles();
 
-  struct XerxRebindEntry entries[70] = {
+  struct XerxRebindEntry entries[60] = {
       {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
       {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
        (void **)&orig_ReportCharacterStateData},
@@ -607,24 +576,8 @@ void ApplyGOTHooks(void) {
        (void **)&orig_Integrity_check},
       {"integrity_detect", (void *)stub_Integrity_detect,
        (void **)&orig_Integrity_detect},
-      {"ace_pre_init", (void *)stub_ace_pre_init, (void **)&orig_ace_pre_init},
-      {"ace_worker", (void *)stub_ace_worker, (void **)&orig_ace_worker},
-      {"ace_rp_queue", (void *)stub_ace_rp_queue, (void **)&orig_ace_rp_queue},
-      {"ms_scan_start", (void *)stub_ms_scan_start,
-       (void **)&orig_ms_scan_start},
-      {"ace_schedule3", (void *)stub_ace_schedule3,
-       (void **)&orig_ace_schedule3},
-      {"ace_cs2", (void *)stub_ace_cs2, (void **)&orig_ace_cs2},
-      {"ace_cs3", (void *)stub_ace_cs3, (void **)&orig_ace_cs3},
-      {"ReportManager", (void *)stub_ReportManager,
-       (void **)&orig_ReportManager},
-      {"TDataMasterReportHub", (void *)stub_TDataMasterReportHub,
-       (void **)&orig_TDataMasterReportHub},
-      {"SecurityLogHitTargetInfoCollector",
-       (void *)stub_SecurityLogHitTargetInfoCollector,
-       (void **)&orig_SecurityLogHitTargetInfoCollector},
   };
-  xerx_rebind(entries, 70);
+  xerx_rebind(entries, 60);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -757,17 +710,9 @@ static void XerxLiveMatchScanner() {
         while (true) {
           [NSThread sleepForTimeInterval:2.0];
 
-          // V.2.5 NUCLEAR ENGINE KILL-SWITCH
+          // V.2.4 GLOBAL INTEGRITY KILL-SWITCH
           if (anBase) {
-            WriteByte(anBase + 0x283B58, 0); // Disable ace_monitor
-            WriteByte(anBase + 0x283B5C, 0); // Disable tp2_scan
-            WriteByte(anBase + 0x283B60, 0); // Disable integrity
-            WriteByte(anBase + 0x283B64, 0); // Disable timing_check
-            WriteByte(anBase + 0x283B68, 0); // Disable netflow
-            WriteByte(anBase + 0x283BA0, 0); // Disable report_queue
-          }
-          if (baseAddr) {
-            WriteByte(baseAddr + 0x15ED128, 0); // Terminate g_ace_thread
+            WriteByte(anBase + 0x283B60, 0); // Disable g_integrity_enable
           }
 
           uintptr_t gWorld = ReadPointer(gWorldAddr);
