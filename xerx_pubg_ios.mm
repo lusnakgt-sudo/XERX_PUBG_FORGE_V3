@@ -19,7 +19,6 @@
 #ifndef PT_DENY_ATTACH
 #define PT_DENY_ATTACH 31
 #endif
-typedef char *caddr_t;
 extern "C" int ioctl(int, unsigned long, ...);
 extern "C" int ptrace(int, int, char *, int);
 
@@ -241,7 +240,6 @@ static void ApplyObjCSwizzles() {
   XerxSwizzleMethod("GSDKReporter", "gsdkReport:Params:", NO);
   XerxSwizzleMethod("PLCrashReporter",
                     "enableCrashReporterAndReturnError:", NO);
-  XerxSwizzleMethod("AdSession", "registerSessionObserver:", NO);
 }
 
 // --- V.1.9 EXPANDED GOT STUBS ---
@@ -374,31 +372,6 @@ static int stub_AnoSDKIoctlOld(int a, int b, void *c, int d) {
   return 0; // Blind ACE kernel comms
 }
 
-// --- V.2.3 ULTRA COMBAT PROXIES ---
-static int (*orig_WeaponReport)(void *) = NULL;
-static int stub_WeaponReport(void *a) { return 0; }
-
-static int (*orig_TotalWeaponReport)(void *) = NULL;
-static int stub_TotalWeaponReport(void *a) { return 0; }
-
-static int (*orig_ShovelAntiCheat)(void *) = NULL;
-static int stub_ShovelAntiCheat(void *a) { return 0; }
-
-static int (*orig_OnWeaponSecurityLogShootActorDelegate)(void *) = NULL;
-static int stub_OnWeaponSecurityLogShootActorDelegate(void *a) { return 0; }
-
-static int (*orig_LuaNotifySecurityAbnormalJump)(void *) = NULL;
-static int stub_LuaNotifySecurityAbnormalJump(void *a) { return 0; }
-
-static int (*orig_ReportJumpFlow)(void *) = NULL;
-static int stub_ReportJumpFlow(void *a) { return 0; }
-
-static int (*orig_GetMaxWeaponReportNum)(void *) = NULL;
-static int stub_GetMaxWeaponReportNum(void *a) { return 0; }
-
-static void (*orig_NotifyAuthority)(void *) = NULL;
-static void stub_NotifyAuthority(void *a) { return; }
-
 static BOOL g_got_hooks_active = NO;
 void ApplyGOTHooks(void) {
   if (g_got_hooks_active)
@@ -406,7 +379,7 @@ void ApplyGOTHooks(void) {
   FindMyIndex();
   ApplyObjCSwizzles();
 
-  struct XerxRebindEntry entries[50] = {
+  struct XerxRebindEntry entries[40] = {
       {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
       {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
        (void **)&orig_ReportCharacterStateData},
@@ -478,25 +451,8 @@ void ApplyGOTHooks(void) {
       {"AnoSDKIoctl", (void *)stub_AnoSDKIoctl, (void **)&orig_AnoSDKIoctl},
       {"AnoSDKIoctlOld", (void *)stub_AnoSDKIoctlOld,
        (void **)&orig_AnoSDKIoctlOld},
-      {"WeaponReport", (void *)stub_WeaponReport, (void **)&orig_WeaponReport},
-      {"TotalWeaponReport", (void *)stub_TotalWeaponReport,
-       (void **)&orig_TotalWeaponReport},
-      {"ShovelAntiCheat", (void *)stub_ShovelAntiCheat,
-       (void **)&orig_ShovelAntiCheat},
-      {"OnWeaponSecurityLogShootActorDelegate",
-       (void *)stub_OnWeaponSecurityLogShootActorDelegate,
-       (void **)&orig_OnWeaponSecurityLogShootActorDelegate},
-      {"LuaNotifySecurityAbnormalJump",
-       (void *)stub_LuaNotifySecurityAbnormalJump,
-       (void **)&orig_LuaNotifySecurityAbnormalJump},
-      {"ReportJumpFlow", (void *)stub_ReportJumpFlow,
-       (void **)&orig_ReportJumpFlow},
-      {"GetMaxWeaponReportNum", (void *)stub_GetMaxWeaponReportNum,
-       (void **)&orig_GetMaxWeaponReportNum},
-      {"NotifyAuthority", (void *)stub_NotifyAuthority,
-       (void **)&orig_NotifyAuthority},
   };
-  xerx_rebind(entries, 43);
+  xerx_rebind(entries, 35);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -597,23 +553,6 @@ static std::string GetUObjectName(uintptr_t uobject, uintptr_t gnames_base) {
   return std::string(name);
 }
 
-static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
-                                uint32_t value) {
-  uintptr_t addr = base + offset;
-  if (XerxIsWritable(addr)) {
-    *(uint32_t *)addr = value;
-    if (g_dashboard) {
-      NSString *msg =
-          [NSString stringWithFormat:@"0x%lx -> 0x%x", offset, value];
-      [g_dashboard logMonitor:msg];
-    }
-  } else {
-    if (g_dashboard)
-      [g_dashboard
-          logMonitor:[NSString stringWithFormat:@"0x%lx SKIP (SAFE)", offset]];
-  }
-}
-
 static void XerxLiveMatchScanner() {
   dispatch_async(
       dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
@@ -647,7 +586,7 @@ static void XerxLiveMatchScanner() {
 
             std::string name = GetUObjectName(uobject, gNamesAddr);
 
-            // Mute Character/Move AC
+            // Mute AntiCheatManagerComp
             if (name == "AntiCheatManagerComp") {
               // Force booleans to false. E.g., bEnableAntiCheat (offset ~0x1B0)
               WriteByte(uobject + 0x1C0, 0); // Disable Data Tunnel
@@ -656,33 +595,12 @@ static void XerxLiveMatchScanner() {
               WriteByte(uobject + 0x1E0, 0); // Mute Crash Context
             }
 
+            // Mute MoveAntiCheatComponent
             if (name == "MoveAntiCheatComponent" ||
                 name == "MoveCheatAntiStrategy") {
               WriteByte(uobject + 0x180, 0); // Disable Fly tracking
               WriteByte(uobject + 0x181, 0); // Disable Walk anomaly
               WriteByte(uobject + 0x182, 0); // Disable Ghosting detect
-
-              // V.2.3 Normalization
-              // Offsets for ratios are typically 0x30-0x50 beyond the booleans
-              // We target the floating point ratios (4 bytes each)
-              // Setting to 1.0 (0x3F800000)
-              XerxPatchDataOffset(uobject, 0x1A0,
-                                  0x3F800000); // MaxBoostSpeedRatio
-              XerxPatchDataOffset(uobject, 0x1A4,
-                                  0x3F800000); // JumpHeightRatio
-              XerxPatchDataOffset(uobject, 0x1A8, 0x3F800000); // MoveSpeedRatio
-            }
-
-            if (name == "STExtraVehicleMovementComponent4W_AntiCheat") {
-              WriteByte(uobject + 0xF0, 0); // Disable Vehicle AC
-              XerxPatchDataOffset(uobject, 0x100,
-                                  0x3F800000); // VehicleSpeedRatio
-            }
-
-            // Mute Weapon AC
-            if (name == "WeaponAntiCheatComp" ||
-                name == "DefaultAntiCheatComponent") {
-              WriteByte(uobject + 0xD0, 0); // Disable Weapon behavioral logs
             }
 
             // Mute Replay Reporters
@@ -696,7 +614,22 @@ static void XerxLiveMatchScanner() {
 }
 // ==========================================
 
-// Muted duplicate definition by move
+static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
+                                uint32_t value) {
+  uintptr_t addr = base + offset;
+  if (XerxIsWritable(addr)) {
+    *(uint32_t *)addr = value;
+    if (g_dashboard) {
+      NSString *msg =
+          [NSString stringWithFormat:@"0x%lx -> 0x%x", offset, value];
+      [g_dashboard logMonitor:msg];
+    }
+  } else {
+    if (g_dashboard)
+      [g_dashboard
+          logMonitor:[NSString stringWithFormat:@"0x%lx SKIP (SAFE)", offset]];
+  }
+}
 
 @interface XerxOrb : UIView
 @property(nonatomic, assign) id dashboard;
