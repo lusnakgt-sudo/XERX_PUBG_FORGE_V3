@@ -1,17 +1,19 @@
 
-name: Ghost PUBG Dylib Compile
+name: Ghost PUBG Dylib Compile V3
 on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Absolute iOS PUBG Dylib Construction
+      - name: XERX-NET V3.0 NEBULA Build
         run: |
           xcrun -sdk iphoneos clang++ -dynamiclib -arch arm64 \
-          -framework UIKit -framework Foundation -framework QuartzCore -framework CoreGraphics -framework CFNetwork \
-          xerx_pubg_ios.mm -o XERX_PUBG_IOS.dylib
+          -framework UIKit -framework Foundation -framework QuartzCore \
+          -framework CoreGraphics -framework CFNetwork -framework WebKit \
+          -std=c++17 \
+          xerx_pubg_ios.mm -o XERX_NEBULA_V3.dylib
       - uses: actions/upload-artifact@v4
         with:
-          name: xerx_pubg_payload
-          path: XERX_PUBG_IOS.dylib
+          name: xerx_nebula_v3_payload
+          path: XERX_NEBULA_V3.dylib
