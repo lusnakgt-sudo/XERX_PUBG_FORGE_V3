@@ -8,9 +8,11 @@
 #import <objc/runtime.h>
 #import <stdint.h>
 #import <string>
+#import <sys/ioctl.h>
+#import <sys/ptrace.h>
+#import <sys/syscall.h>
 #import <sys/sysctl.h>
 #import <sys/time.h>
-#import <sys/types.h>
 #import <unistd.h>
 #import <vector>
 
@@ -324,7 +326,7 @@ static int stub_ReportCharacterStateData(void *a, void *b, void *c) {
 
 // PROXY: ReportEventWithParam
 static int (*orig_ReportEventWithParam)(void *, void *, void *) = NULL;
-static int stub_EventWithParam(void *a, void *b, void *c) {
+static int stub_ReportEventWithParam(void *a, void *b, void *c) {
   return 0; // Silence Generic Anomaly Reports
 }
 
