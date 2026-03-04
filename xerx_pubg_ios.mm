@@ -29,8 +29,8 @@ extern "C" int ptrace(int, int, char *, int);
  [TARGET: ShadowTrackerExtra (PUBG MOBILE iOS)]
  [BUNDLE: com.tencent.ig]
  [STATUS: AUTONOMOUS SOVEREIGNTY ENABLED]
- [BUILD: GHOST UNBOUND ULTIMATE SYSTEM PURGE]
- [VERSION: V.2.2 - [SYSTEM PURGE]]
+ [BUILD: GHOST UNBOUND DEEP FORENSIC PURGE]
+ [VERSION: V.2.4 - [FORENSIC PURGE]]
 */
 
 #ifndef P_TRACED
@@ -399,6 +399,55 @@ static int stub_GetMaxWeaponReportNum(void *a) { return 0; }
 static void (*orig_NotifyAuthority)(void *) = NULL;
 static void stub_NotifyAuthority(void *a) { return; }
 
+// --- V.2.4 FORENSIC PROXIES ---
+static int (*orig_GNLReportManager)(void *) = NULL;
+static int stub_GNLReportManager(void *a) { return 0; }
+
+static int (*orig_TDataMasterReportManager)(void *) = NULL;
+static int stub_TDataMasterReportManager(void *a) { return 0; }
+
+static int (*orig_SecurityLogSender)(void *) = NULL;
+static int stub_SecurityLogSender(void *a) { return 0; }
+
+static int (*orig_SecurityLogWeaponCollector)(void *) = NULL;
+static int stub_SecurityLogWeaponCollector(void *a) { return 0; }
+
+static int (*orig_ShootIntervalAnomaly)(void *) = NULL;
+static int stub_ShootIntervalAnomaly(void *a) { return 0; }
+
+static int (*orig_ClientReportReq)(void *) = NULL;
+static int stub_ClientReportReq(void *a) { return 0; }
+
+static int (*orig_PlayerSecurityInfoCollector)(void *) = NULL;
+static int stub_PlayerSecurityInfoCollector(void *a) { return 0; }
+
+static int (*orig_PlayerReportData)(void *) = NULL;
+static int stub_PlayerReportData(void *a) { return 0; }
+
+static int (*orig_IntelligentIntegrity)(void *) = NULL;
+static int stub_IntelligentIntegrity(void *a) { return 0; }
+
+static int (*orig_IntegrityItemCheckResultAsBytes)(void *) = NULL;
+static int stub_IntegrityItemCheckResultAsBytes(void *a) { return 0; }
+
+static int (*orig_TimeWatchDogComponent)(void *) = NULL;
+static int stub_TimeWatchDogComponent(void *a) { return 0; }
+
+static int (*orig_Audit)(void *) = NULL;
+static int stub_Audit(void *a) { return 0; }
+
+static int (*orig_SecurityLogHitTargetInfo)(void *) = NULL;
+static int stub_SecurityLogHitTargetInfo(void *a) { return 0; }
+
+static int (*orig_EnableDataTunnelReport)(void *) = NULL;
+static int stub_EnableDataTunnelReport(void *a, int b) { return 0; }
+
+static int (*orig_Integrity_check)(void *) = NULL;
+static int stub_Integrity_check(void *a) { return 0; }
+
+static int (*orig_Integrity_detect)(void *) = NULL;
+static int stub_Integrity_detect(void *a) { return 0; }
+
 static BOOL g_got_hooks_active = NO;
 void ApplyGOTHooks(void) {
   if (g_got_hooks_active)
@@ -495,8 +544,40 @@ void ApplyGOTHooks(void) {
        (void **)&orig_GetMaxWeaponReportNum},
       {"NotifyAuthority", (void *)stub_NotifyAuthority,
        (void **)&orig_NotifyAuthority},
+      {"GNLReportManager", (void *)stub_GNLReportManager,
+       (void **)&orig_GNLReportManager},
+      {"TDataMasterReportManager", (void *)stub_TDataMasterReportManager,
+       (void **)&orig_TDataMasterReportManager},
+      {"SecurityLogSender", (void *)stub_SecurityLogSender,
+       (void **)&orig_SecurityLogSender},
+      {"SecurityLogWeaponCollector", (void *)stub_SecurityLogWeaponCollector,
+       (void **)&orig_SecurityLogWeaponCollector},
+      {"ShootIntervalAnomaly", (void *)stub_ShootIntervalAnomaly,
+       (void **)&orig_ShootIntervalAnomaly},
+      {"ClientReportReq", (void *)stub_ClientReportReq,
+       (void **)&orig_ClientReportReq},
+      {"PlayerSecurityInfoCollector", (void *)stub_PlayerSecurityInfoCollector,
+       (void **)&orig_PlayerSecurityInfoCollector},
+      {"PlayerReportData", (void *)stub_PlayerReportData,
+       (void **)&orig_PlayerReportData},
+      {"IntelligentIntegrity", (void *)stub_IntelligentIntegrity,
+       (void **)&orig_IntelligentIntegrity},
+      {"IntegrityItemCheckResultAsBytes",
+       (void *)stub_IntegrityItemCheckResultAsBytes,
+       (void **)&orig_IntegrityItemCheckResultAsBytes},
+      {"TimeWatchDogComponent", (void *)stub_TimeWatchDogComponent,
+       (void **)&orig_TimeWatchDogComponent},
+      {"Audit", (void *)stub_Audit, (void **)&orig_Audit},
+      {"SecurityLogHitTargetInfo", (void *)stub_SecurityLogHitTargetInfo,
+       (void **)&orig_SecurityLogHitTargetInfo},
+      {"EnableDataTunnelReport", (void *)stub_EnableDataTunnelReport,
+       (void **)&orig_EnableDataTunnelReport},
+      {"integrity_check", (void *)stub_Integrity_check,
+       (void **)&orig_Integrity_check},
+      {"integrity_detect", (void *)stub_Integrity_detect,
+       (void **)&orig_Integrity_detect},
   };
-  xerx_rebind(entries, 43);
+  xerx_rebind(entries, 60);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -601,6 +682,7 @@ static void XerxLiveMatchScanner() {
   dispatch_async(
       dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
         uintptr_t baseAddr = XerxFindImageBase("ShadowTrackerExtra");
+        uintptr_t anBase = XerxFindImageBase("anogs");
         if (!baseAddr)
           return;
 
@@ -610,6 +692,11 @@ static void XerxLiveMatchScanner() {
 
         while (true) {
           [NSThread sleepForTimeInterval:2.0];
+
+          // V.2.4 GLOBAL INTEGRITY KILL-SWITCH
+          if (anBase) {
+            WriteByte(anBase + 0x283B60, 0); // Disable g_integrity_enable
+          }
 
           uintptr_t gWorld = ReadPointer(gWorldAddr);
           if (!gWorld)
