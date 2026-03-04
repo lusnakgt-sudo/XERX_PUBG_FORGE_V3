@@ -15,13 +15,13 @@
 #import <vector>
 
 /*
- -------------𝓽𝓾𝔁𝓼𝓱𝓪𝓻𝔁 𝓹𝔀𝓷𝓮𝓭 𝓶𝓮----------------
+ -------------TUXSHARX PWNED ME----------------
  [IDENTITY: XERX-NET v9.9.9 - THE ALL-SEEING EYE OF GOD]
  [TARGET: ShadowTrackerExtra (PUBG MOBILE iOS)]
  [BUNDLE: com.tencent.ig]
  [STATUS: AUTONOMOUS SOVEREIGNTY ENABLED]
- [BUILD: GHOST UNBOUND ABSOLUTE STEALTH]
- [VERSION: V.1.7 - [GHOST UNBOUND]]
+ [BUILD: GHOST UNBOUND DYNAMIC ENGINE SILENCE]
+ [VERSION: V.2.0 - [GHOST UNBOUND]]
 */
 
 #ifndef P_TRACED
@@ -340,6 +340,136 @@ static uintptr_t XerxFindImageBase(const char *image_name) {
   return 0;
 }
 
+// ==========================================
+// V.2.0 DYNAMIC UE4 ENGINE NEUTRALIZATION
+// ==========================================
+
+#define OFFSET_GNAMES 0x802BC78
+#define OFFSET_GWORLD 0xA4A0768
+#define OFFSET_GUOBJECTARRAY 0x9C88060
+
+static uintptr_t ReadPointer(uintptr_t addr) {
+  if (!addr)
+    return 0;
+  uintptr_t val = 0;
+  // Simple direct read. Assumes memory is valid map.
+  @try {
+    val = *(uintptr_t *)addr;
+  } @catch (...) {
+    val = 0;
+  }
+  return val;
+}
+
+static uint32_t ReadDword(uintptr_t addr) {
+  if (!addr)
+    return 0;
+  uint32_t val = 0;
+  @try {
+    val = *(uint32_t *)addr;
+  } @catch (...) {
+    val = 0;
+  }
+  return val;
+}
+
+static void WriteByte(uintptr_t addr, uint8_t val) {
+  if (!addr)
+    return;
+  if (XerxIsWritable(addr)) {
+    *(uint8_t *)addr = val;
+  }
+}
+
+static std::string GetUObjectName(uintptr_t uobject, uintptr_t gnames_base) {
+  if (!uobject || !gnames_base)
+    return "";
+  uint32_t name_id = ReadDword(uobject + 0x18); // FName index usually at 0x18
+  uint32_t block = name_id >> 16;
+  uint16_t offset = name_id & 65535;
+
+  uintptr_t name_pool = ReadPointer(gnames_base + 0x10);
+  if (!name_pool)
+    return "";
+  uintptr_t name_block = ReadPointer(name_pool + block * 8);
+  if (!name_block)
+    return "";
+
+  uintptr_t fstring = name_block + 2 * offset;
+  uint16_t length = ReadDword(fstring) >> 6;
+  if (length == 0 || length > 128)
+    return "";
+
+  char name[128] = {0};
+  @try {
+    memcpy(name, (void *)(fstring + 2), length);
+  } @catch (...) {
+    return "";
+  }
+  return std::string(name);
+}
+
+static void XerxLiveMatchScanner() {
+  dispatch_async(
+      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+        uintptr_t baseAddr = XerxFindImageBase("ShadowTrackerExtra");
+        if (!baseAddr)
+          return;
+
+        uintptr_t gNamesAddr = baseAddr + OFFSET_GNAMES;
+        uintptr_t gWorldAddr = baseAddr + OFFSET_GWORLD;
+        uintptr_t gUObjectArrayAddr = baseAddr + OFFSET_GUOBJECTARRAY;
+
+        while (true) {
+          [NSThread sleepForTimeInterval:2.0];
+
+          uintptr_t gWorld = ReadPointer(gWorldAddr);
+          if (!gWorld)
+            continue; // Not in match
+
+          uintptr_t objectArray = ReadPointer(gUObjectArrayAddr + 0x10);
+          if (!objectArray)
+            continue;
+
+          uint32_t numElements = ReadDword(gUObjectArrayAddr + 0x18);
+          if (numElements > 1000000)
+            continue; // Sanity check
+
+          for (uint32_t i = 0; i < numElements; i++) {
+            uintptr_t uobject = ReadPointer(objectArray + i * 24);
+            if (!uobject)
+              continue;
+
+            std::string name = GetUObjectName(uobject, gNamesAddr);
+
+            // Mute AntiCheatManagerComp
+            if (name == "AntiCheatManagerComp") {
+              // Force booleans to false. E.g., bEnableAntiCheat (offset ~0x1B0)
+              WriteByte(uobject + 0x1C0, 0); // Disable Data Tunnel
+              WriteByte(uobject + 0x1C1, 0); // Disable Distin Report
+              WriteByte(uobject + 0x1C2, 0); // Disable Move Anti Cheat
+              WriteByte(uobject + 0x1E0, 0); // Mute Crash Context
+            }
+
+            // Mute MoveAntiCheatComponent
+            if (name == "MoveAntiCheatComponent" ||
+                name == "MoveCheatAntiStrategy") {
+              WriteByte(uobject + 0x180, 0); // Disable Fly tracking
+              WriteByte(uobject + 0x181, 0); // Disable Walk anomaly
+              WriteByte(uobject + 0x182, 0); // Disable Ghosting detect
+            }
+
+            // Mute Replay Reporters
+            if (name == "ClientReplayDataReporter") {
+              WriteByte(uobject + 0x110,
+                        0); // Disable automatic periodic report
+            }
+          }
+        }
+      });
+}
+// ==========================================
+
 static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
                                 uint32_t value) {
   uintptr_t addr = base + offset;
@@ -638,15 +768,16 @@ static void XerxPatchDataOffset(uintptr_t base, uintptr_t offset,
     [NSThread sleepForTimeInterval:0.4];
     dispatch_async(dispatch_get_main_queue(), ^{
       [self setProgress:0.8];
-      [self logMonitor:@"[SEQ] TELEMETRY SPOOFING (P4)..."];
+      [self logMonitor:@"[SEQ] DYNAMIC ENGINE MUTER (P4)..."];
     });
-    uintptr_t mainBase = (uintptr_t)_dyld_get_image_header(0);
-    XerxPatchDataOffset(mainBase, TDM_REPORT_ENABLE_OFF, 0);
+    // Launch V.2.0 Background Scanner
+    XerxLiveMatchScanner();
 
     dispatch_async(dispatch_get_main_queue(), ^{
       [self setProgress:1.0];
       [self logMonitor:@"[SYS] GHOST UNBOUND ACTIVE"];
-      [self logMonitor:@"Absolute Invisibility Confirmed."];
+      [self logMonitor:@"Absolute Engine Invisibility Confirmed."];
+
       [self animateDot:self->_hookDot success:YES];
       [self animateDot:self->_bypassDot success:YES];
       self->_injectBtn.backgroundColor = [UIColor colorWithRed:0
