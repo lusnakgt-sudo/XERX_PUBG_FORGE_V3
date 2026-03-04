@@ -455,7 +455,7 @@ void ApplyGOTHooks(void) {
   FindMyIndex();
   ApplyObjCSwizzles();
 
-  struct XerxRebindEntry entries[40] = {
+  struct XerxRebindEntry entries[60] = {
       {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
       {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
        (void **)&orig_ReportCharacterStateData},
