@@ -101,6 +101,50 @@ static const struct mach_header *stub_dyld_get_image_header(uint32_t index) {
   return _dyld_get_image_header(index);
 }
 
+static BOOL XerxIsWritable(uintptr_t addr) {
+  vm_address_t address = (vm_address_t)addr;
+  vm_size_t size = 0;
+  vm_region_submap_short_info_data_64_t info;
+  mach_msg_type_number_t count = VM_REGION_SUBMAP_SHORT_INFO_COUNT_64;
+  uint32_t depth = 0;
+  kern_return_t kr =
+      vm_region_recurse_64(mach_task_self(), &address, &size, &depth,
+                           (vm_region_recurse_info_t)&info, &count);
+  return (kr == KERN_SUCCESS && (info.protection & VM_PROT_WRITE) != 0);
+}
+
+static void WriteByte(uintptr_t addr, uint8_t val) {
+  if (!addr)
+    return;
+  if (XerxIsWritable(addr)) {
+    *(uint8_t *)addr = val;
+  }
+}
+
+static uintptr_t ReadPointer(uintptr_t addr) {
+  if (!addr)
+    return 0;
+  uintptr_t val = 0;
+  @try {
+    val = *(uintptr_t *)addr;
+  } @catch (...) {
+    val = 0;
+  }
+  return val;
+}
+
+static uint32_t ReadDword(uintptr_t addr) {
+  if (!addr)
+    return 0;
+  uint32_t val = 0;
+  @try {
+    val = *(uint32_t *)addr;
+  } @catch (...) {
+    val = 0;
+  }
+  return val;
+}
+
 static void xerx_rebind_in_image(const struct mach_header *header,
                                  intptr_t slide,
                                  struct XerxRebindEntry *entries,
@@ -460,18 +504,6 @@ void ApplyGOTHooks(void) {
   }
 }
 
-static BOOL XerxIsWritable(uintptr_t addr) {
-  vm_address_t address = (vm_address_t)addr;
-  vm_size_t size = 0;
-  vm_region_submap_short_info_data_64_t info;
-  mach_msg_type_number_t count = VM_REGION_SUBMAP_SHORT_INFO_COUNT_64;
-  uint32_t depth = 0;
-  kern_return_t kr =
-      vm_region_recurse_64(mach_task_self(), &address, &size, &depth,
-                           (vm_region_recurse_info_t)&info, &count);
-  return (kr == KERN_SUCCESS && (info.protection & VM_PROT_WRITE) != 0);
-}
-
 static uintptr_t XerxFindImageBase(const char *image_name) {
   uint32_t count = _dyld_image_count();
   for (uint32_t i = 0; i < count; i++) {
@@ -520,39 +552,6 @@ static void XerxAnogsPatcher(uintptr_t base) {
 #define OFFSET_GNAMES 0x802BC78
 #define OFFSET_GWORLD 0xA4A0768
 #define OFFSET_GUOBJECTARRAY 0x9C88060
-
-static uintptr_t ReadPointer(uintptr_t addr) {
-  if (!addr)
-    return 0;
-  uintptr_t val = 0;
-  // Simple direct read. Assumes memory is valid map.
-  @try {
-    val = *(uintptr_t *)addr;
-  } @catch (...) {
-    val = 0;
-  }
-  return val;
-}
-
-static uint32_t ReadDword(uintptr_t addr) {
-  if (!addr)
-    return 0;
-  uint32_t val = 0;
-  @try {
-    val = *(uint32_t *)addr;
-  } @catch (...) {
-    val = 0;
-  }
-  return val;
-}
-
-static void WriteByte(uintptr_t addr, uint8_t val) {
-  if (!addr)
-    return;
-  if (XerxIsWritable(addr)) {
-    *(uint8_t *)addr = val;
-  }
-}
 
 static std::string GetUObjectName(uintptr_t uobject, uintptr_t gnames_base) {
   if (!uobject || !gnames_base)
