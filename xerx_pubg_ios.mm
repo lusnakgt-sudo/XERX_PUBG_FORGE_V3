@@ -20,8 +20,8 @@
  [TARGET: ShadowTrackerExtra (PUBG MOBILE iOS)]
  [BUNDLE: com.tencent.ig]
  [STATUS: AUTONOMOUS SOVEREIGNTY ENABLED]
- [BUILD: GHOST UNBOUND DYNAMIC ENGINE SILENCE]
- [VERSION: V.2.0 - [GHOST UNBOUND]]
+ [BUILD: GHOST UNBOUND ULTIMATE PURGE]
+ [VERSION: V.2.1 - [GHOST UNBOUND]]
 */
 
 #ifndef P_TRACED
@@ -256,6 +256,60 @@ static int stub_CheckReportSecAttackFlow(void *a) { return 0; }
 static int (*orig_ClientReplayDataReporter)(void *) = NULL;
 static int stub_ClientReplayDataReporter(void *a) { return 0; }
 
+// --- V.2.1 ULTIMATE DEEP C++ PROXIES ---
+static int (*orig_ReportGameSetting)(void *) = NULL;
+static int stub_ReportGameSetting(void *a) { return 0; }
+
+static int (*orig_ReportExceptionOnVehicle)(void *) = NULL;
+static int stub_ReportExceptionOnVehicle(void *a) { return 0; }
+
+static int (*orig_ReportAudioDebugData)(void *) = NULL;
+static int stub_ReportAudioDebugData(void *a) { return 0; }
+
+static int (*orig_ReportAttrException)(void *) = NULL;
+static int stub_ReportAttrException(void *a) { return 0; }
+
+static int (*orig_ReportSpeedException)(void *) = NULL;
+static int stub_ReportSpeedException(void *a) { return 0; }
+
+static int (*orig_ReportPVSException)(void *) = NULL;
+static int stub_ReportPVSException(void *a) { return 0; }
+
+static int (*orig_CatchReportAntiCheatDetailData)(void *) = NULL;
+static int stub_CatchReportAntiCheatDetailData(void *a) { return 0; }
+
+static int (*orig_ReportAutonomousMoveSpeedParam)(void *) = NULL;
+static int stub_ReportAutonomousMoveSpeedParam(void *a) { return 0; }
+
+static int (*orig_ReportSimulateDragTimer)(void *) = NULL;
+static int stub_ReportSimulateDragTimer(void *a) { return 0; }
+
+static int (*orig_SeverReportSimulateDrag)(void *) = NULL;
+static int stub_SeverReportSimulateDrag(void *a) { return 0; }
+
+static int (*orig_CheckReportSecAttackFlowWithAttackFlow)(void *) = NULL;
+static int stub_CheckReportSecAttackFlowWithAttackFlow(void *a) { return 0; }
+
+static int (*orig_ReportDSPlayerDieCircleFlow)(void *) = NULL;
+static int stub_ReportDSPlayerDieCircleFlow(void *a) { return 0; }
+
+static int (*orig_ReportPlayerKillFlow)(void *) = NULL;
+static int stub_ReportPlayerKillFlow(void *a) { return 0; }
+
+static int (*orig_ReportAimFlow)(void *) = NULL;
+static int stub_ReportAimFlow(void *a) { return 0; }
+
+static int (*orig_RPC_Server_ReportCharacterStateData)(void *) = NULL;
+static int stub_RPC_Server_ReportCharacterStateData(void *a) { return 0; }
+
+static int (*orig_RPC_Server_ReportSimulateCharacterLocation)(void *) = NULL;
+static int stub_RPC_Server_ReportSimulateCharacterLocation(void *a) {
+  return 0;
+}
+
+static int (*orig_RPC_Server_ReportSettingData)(void *) = NULL;
+static int stub_RPC_Server_ReportSettingData(void *a) { return 0; }
+
 // PROXY: tdm_report
 static int (*orig_tdm_report)(void) = NULL;
 static int stub_tdm_report(void) {
@@ -281,7 +335,7 @@ void ApplyGOTHooks(void) {
   FindMyIndex();
   ApplyObjCSwizzles();
 
-  struct XerxRebindEntry entries[13] = {
+  struct XerxRebindEntry entries[30] = {
       {"tdm_report", (void *)stub_tdm_report, (void **)&orig_tdm_report},
       {"ReportCharacterStateData", (void *)stub_ReportCharacterStateData,
        (void **)&orig_ReportCharacterStateData},
@@ -301,6 +355,46 @@ void ApplyGOTHooks(void) {
        (void **)&orig_CheckReportSecAttackFlow},
       {"ClientReplayDataReporter", (void *)stub_ClientReplayDataReporter,
        (void **)&orig_ClientReplayDataReporter},
+      {"ReportGameSetting", (void *)stub_ReportGameSetting,
+       (void **)&orig_ReportGameSetting},
+      {"ReportExceptionOnVehicle", (void *)stub_ReportExceptionOnVehicle,
+       (void **)&orig_ReportExceptionOnVehicle},
+      {"ReportAudioDebugData", (void *)stub_ReportAudioDebugData,
+       (void **)&orig_ReportAudioDebugData},
+      {"ReportAttrException", (void *)stub_ReportAttrException,
+       (void **)&orig_ReportAttrException},
+      {"ReportSpeedException", (void *)stub_ReportSpeedException,
+       (void **)&orig_ReportSpeedException},
+      {"ReportPVSException", (void *)stub_ReportPVSException,
+       (void **)&orig_ReportPVSException},
+      {"CatchReportAntiCheatDetailData",
+       (void *)stub_CatchReportAntiCheatDetailData,
+       (void **)&orig_CatchReportAntiCheatDetailData},
+      {"ReportAutonomousMoveSpeedParam",
+       (void *)stub_ReportAutonomousMoveSpeedParam,
+       (void **)&orig_ReportAutonomousMoveSpeedParam},
+      {"ReportSimulateDragTimer", (void *)stub_ReportSimulateDragTimer,
+       (void **)&orig_ReportSimulateDragTimer},
+      {"SeverReportSimulateDrag", (void *)stub_SeverReportSimulateDrag,
+       (void **)&orig_SeverReportSimulateDrag},
+      {"CheckReportSecAttackFlowWithAttackFlow",
+       (void *)stub_CheckReportSecAttackFlowWithAttackFlow,
+       (void **)&orig_CheckReportSecAttackFlowWithAttackFlow},
+      {"ReportDSPlayerDieCircleFlow", (void *)stub_ReportDSPlayerDieCircleFlow,
+       (void **)&orig_ReportDSPlayerDieCircleFlow},
+      {"ReportPlayerKillFlow", (void *)stub_ReportPlayerKillFlow,
+       (void **)&orig_ReportPlayerKillFlow},
+      {"ReportAimFlow", (void *)stub_ReportAimFlow,
+       (void **)&orig_ReportAimFlow},
+      {"RPC_Server_ReportCharacterStateData",
+       (void *)stub_RPC_Server_ReportCharacterStateData,
+       (void **)&orig_RPC_Server_ReportCharacterStateData},
+      {"RPC_Server_ReportSimulateCharacterLocation",
+       (void *)stub_RPC_Server_ReportSimulateCharacterLocation,
+       (void **)&orig_RPC_Server_ReportSimulateCharacterLocation},
+      {"RPC_Server_ReportSettingData",
+       (void *)stub_RPC_Server_ReportSettingData,
+       (void **)&orig_RPC_Server_ReportSettingData},
       {"_dyld_get_image_count", (void *)stub_dyld_get_image_count,
        (void **)&orig_dyld_get_image_count},
       {"_dyld_get_image_name", (void *)stub_dyld_get_image_name,
@@ -308,7 +402,7 @@ void ApplyGOTHooks(void) {
       {"_dyld_get_image_header", (void *)stub_dyld_get_image_header,
        (void **)&orig_dyld_get_image_header},
   };
-  xerx_rebind(entries, 13);
+  xerx_rebind(entries, 30);
   g_got_hooks_active = YES;
   if (g_dashboard) {
     dispatch_async(dispatch_get_main_queue(), ^{
