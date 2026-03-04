@@ -19,9 +19,8 @@
 #ifndef PT_DENY_ATTACH
 #define PT_DENY_ATTACH 31
 #endif
-typedef char *caddr_t;
 extern "C" int ioctl(int, unsigned long, ...);
-extern "C" int ptrace(int, pid_t, caddr_t, int);
+extern "C" int ptrace(int, int, char *, int);
 
 /*
  -------------TUXSHARX PWNED ME----------------
@@ -353,7 +352,7 @@ static int stub_syscall(int number, long a, long b, long c, long d, long e) {
     return 0; // SYS_ptrace filter
   if (orig_syscall)
     return orig_syscall(number, a, b, c, d, e);
-  return syscall(number, a, b, c, d, e);
+  return 0; // Absolute safety fallback
 }
 
 static int (*orig_ioctl)(int, unsigned long, ...) = NULL;
